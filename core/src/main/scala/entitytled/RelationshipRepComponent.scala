@@ -1,5 +1,7 @@
 package entitytled
 
+import language.existentials
+
 trait RelationshipRepComponent {
   self: DriverComponent with TableComponent with RelationshipComponent =>
 
