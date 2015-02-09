@@ -46,13 +46,13 @@ trait RelationshipComponent {
       fromQuery.filter(_.id === id).innerJoin(toQuery).on(joinCondition).map(_._2)
   }
 
-  abstract class ThroughRelationship[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity, J, T, Value, Rep <: RelationshipRep[E, Value]]
+  abstract class ThroughRelationship[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity, T, Value, Rep <: RelationshipRep[E, Value]]
       (implicit mapping: BaseColumnType[E#IdType])
     extends Relationship[From, To, E, T, Value, Rep]
   {
     val fromQuery: Query[From, E, Seq]
 
-    val toQuery: Query[(Through, To), (J, T), Seq]
+    val toQuery: Query[(Through, To), _ <: (_, T), Seq]
 
     val joinCondition: (From, (Through, To)) => Column[Boolean]
 
@@ -153,12 +153,12 @@ trait RelationshipComponent {
       query.innerJoin(toQuery).on(joinCondition).list.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))
   }
 
-  class ToOneThrough[From <: EntityTable[E], Through <: Table[J], To <: Table[T], E <: Entity, J, T](
+  class ToOneThrough[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity, T](
       val fromQuery: Query[From, E, Seq],
-      val toQuery: Query[(Through, To), (J, T), Seq],
+      val toQuery: Query[(Through, To), _ <: (_, T), Seq],
       val joinCondition: (From, (Through, To)) => Column[Boolean],
       val propertyLens: Lens[E, One[E, T]])(implicit mapping: BaseColumnType[E#IdType])
-    extends ThroughRelationship[From, Through, To, E, J, T, Option[T], One[E, T]]
+    extends ThroughRelationship[From, Through, To, E, T, Option[T], One[E, T]]
     with ToOneRelationship[From, To, E, T]
   {
     def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
@@ -182,12 +182,12 @@ trait RelationshipComponent {
         .groupBy(_._1).map(x => (x._1, x._2.map(_._2).headOption))
   }
 
-  class ToManyThrough[From <: EntityTable[E], Through <: Table[J], To <: Table[T], E <: Entity, J, T](
+  class ToManyThrough[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity, T](
       val fromQuery: Query[From, E, Seq],
-      val toQuery: Query[(Through, To), (J, T), Seq],
+      val toQuery: Query[(Through, To), _ <: (_, T), Seq],
       val joinCondition: (From, (Through, To)) => Column[Boolean],
       val propertyLens: Lens[E, Many[E, T]])(implicit mapping: BaseColumnType[E#IdType])
-    extends ThroughRelationship[From, Through, To, E, J, T, Seq[T], Many[E, T]]
+    extends ThroughRelationship[From, Through, To, E, T, Seq[T], Many[E, T]]
     with ToManyRelationship[From, To, E, T]
   {
     def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {

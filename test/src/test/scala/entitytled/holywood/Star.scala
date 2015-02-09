@@ -15,7 +15,7 @@ case class Star(
 object Star extends EntityRepository[Stars, Star] with EntityCompanion[Stars, Star] {
   val query = TableQuery[Stars]
 
-  val movies = toManyThrough[Movies, MoviesStars, Movie, (MovieID, StarID)](
+  val movies = toManyThrough[Movies, MoviesStars, Movie](
     TableQuery[MoviesStars] innerJoin TableQuery[Movies] on(_.movieID === _.id),
     _.id === _._1.starID,
     lenser(_.movies)

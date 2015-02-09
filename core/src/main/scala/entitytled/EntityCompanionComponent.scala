@@ -31,11 +31,11 @@ trait EntityCompanionComponent {
     )(implicit mapping: BaseColumnType[E#IdType]): ToMany[T, To, E, M] =
       new ToMany[T, To, E, M](query, toQuery, joinCondition, propertyLens)
 
-    protected def toManyThrough[To <: Table[M], Through <: Table[J], M, J](
-      toQuery: Query[(Through, To), (J, M), Seq],
+    protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
+      toQuery: Query[(Through, To), _ <: (_, M), Seq],
       joinCondition: (T, (Through, To)) => Column[Boolean],
       propertyLens: Lens[E, Many[E, M]]
-    )(implicit mapping: BaseColumnType[E#IdType]): ToManyThrough[T, Through, To, E, J, M] =
-      new ToManyThrough[T, Through, To, E, J, M](query, toQuery, joinCondition, propertyLens)
+    )(implicit mapping: BaseColumnType[E#IdType]): ToManyThrough[T, Through, To, E, M] =
+      new ToManyThrough[T, Through, To, E, M](query, toQuery, joinCondition, propertyLens)
   }
 }
