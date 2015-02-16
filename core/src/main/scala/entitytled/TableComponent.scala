@@ -5,6 +5,7 @@ trait TableComponent {
 
   import driver.simple._
 
+  /** Base class for entity tables */
   abstract class EntityTable[E <: Entity](
       tag: Tag,
       schemaName: Option[String],

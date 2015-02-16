@@ -21,7 +21,12 @@ object Holywood {
     val keepAliveSession = db.createSession()
     keepAliveSession.force() // keep the database in memory with an extra connection
     db.withTransaction { implicit session =>
-      (TableQuery[Stars].ddl ++ TableQuery[Movies].ddl ++ TableQuery[MoviesStars].ddl).create
+      (
+        TableQuery[Directors].ddl ++
+        TableQuery[Stars].ddl ++
+        TableQuery[Movies].ddl ++
+        TableQuery[MoviesStars].ddl
+      ).create
     }
     db
   }

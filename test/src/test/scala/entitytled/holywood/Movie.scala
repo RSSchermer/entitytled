@@ -8,6 +8,8 @@ case class MovieID(value: Long) extends MappedTo[Long]
 case class Movie(
     id: Option[MovieID],
     title: String,
+    directorID: DirectorID,
+    director: One[Movie, Director],
     stars: Many[Movie, Star] = ManyFetched(Movie.stars))
   extends Entity { type IdType = MovieID }
 
@@ -19,4 +21,6 @@ object Movie extends EntityRepository[Movies, Movie] with EntityCompanion[Movies
     _.id === _._1.movieID,
     lenser(_.stars)
   )
+
+  val director = toOne[Directors, Director](TableQuery[Directors], _.directorID === _.id, lenser(_.director))
 }
