@@ -14,7 +14,7 @@ val monocleCore   = "com.github.julien-truffaut"  %%  "monocle-core"    % "1.0.0
 
 val monocleMacros = "com.github.julien-truffaut"  %%  "monocle-macro"   % "1.0.0-M1"
 
-val scalaTest     = "org.scalatest"               %   "scalatest_2.11"  % "2.2.1"     % "test"
+val scalaTest     = "org.scalatest"               %%  "scalatest"       % "2.2.1"     % "test"
 
 val h2database    = "com.h2database"              %   "h2"              % "1.4.181"   % "test"
 
