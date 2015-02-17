@@ -3,6 +3,8 @@
 Entitytled is a data access and persistence library build on top of the amazing 
 [Scala Slick](http://slick.typesafe.com/) library.
 
+[![Build Status](https://travis-ci.org/RSSchermer/entitytled.svg?branch=master)](https://travis-ci.org/RSSchermer/entitytled)
+
 NOTE: Entitytled is still under active development.
 
 ## Simple Example
@@ -52,7 +54,9 @@ case class Director(
     movies: Many[Director, Movie] = ManyFetched(Director.movies, Seq()))
   extends Entity { type IdType = DirectorID }
 
-object Director extends EntityRepository[Directors, Director] with EntityCompanion[Directors, Director] {
+object Director extends EntityRepository[Directors, Director] 
+  with EntityCompanion[Directors, Director] 
+{
   val query = TableQuery[Directors]
 
   val movies = toMany[Movies, Movie](
@@ -70,7 +74,9 @@ case class Movie(
     director: One[Movie, Director])
   extends Entity { type IdType = MovieID }
 
-object Movie extends EntityRepository[Movies, Movie] with EntityCompanion[Movies, Movie] {
+object Movie extends EntityRepository[Movies, Movie] 
+  with EntityCompanion[Movies, Movie]
+{
   val query = TableQuery[Movies]
 
   val director = toOne[Directors, Director](
@@ -99,11 +105,13 @@ Movie.include(Movie.director).list.foreach {
 Movie.include(Movie.director, Movie.stars).list
 
 // You can also nest side-load on other side-loads (to arbitrary depth):
-val director = Director.include(Director.movies.include(Movie.stars)).find(DirectorID(3)).get
+val director = Director.include(Director.movies.include(Movie.stars))
+  .find(DirectorID(3)).get
 director.movies.getOrFetch.flatMap(_.stars.getOrFetch).foreach { println }
 
 // You can build more complex entity collections with sorting, filtering, etc.:
-Director.filter(_.age >= 65).sortBy(_.name.asc).drop(100).take(10).include(Director.movies).list
+Director.filter(_.age >= 65).sortBy(_.name.asc).drop(100).take(10)
+  .include(Director.movies).list
 ```
 
 We can also create, update and delete entities:
@@ -121,7 +129,7 @@ Movie.delete(MovieID(10))
 ```
 
 (More detailed documentation incoming. For now, you might want to take a look
-at the [tests](/test/src/scala/entitytled) for more examples.)
+at the [tests](/test/src/test/scala/entitytled) for more examples.)
 
 ## License
 
