@@ -5,7 +5,8 @@ Entitytled is a data access and persistence library build on top of the amazing
 
 [![Build Status](https://travis-ci.org/RSSchermer/entitytled.svg?branch=master)](https://travis-ci.org/RSSchermer/entitytled)
 
-NOTE: Entitytled is still under active development.
+NOTE: Entitytled is currently still under development and may be subject to
+large breaking changes.
 
 ## Simple Example
 
@@ -128,7 +129,7 @@ Movie.update(movie.copy(title = "The Matrix Reloaded"))
 Movie.delete(MovieID(10))
 ```
 
-(More detailed documentation incoming. For now, you might want to take a look
+(More detailed documentation is coming. For now, you might want to take a look
 at the [tests](/test/src/test/scala/entitytled) for more examples.)
 
 ## License
