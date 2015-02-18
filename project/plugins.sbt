@@ -1,1 +1,3 @@
-addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.5.2")
+resolvers += Resolver.sonatypeRepo("releases")
+
+addSbtPlugin("org.typelevel" % "sbt-typelevel" % "0.3.1")
