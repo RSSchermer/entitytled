@@ -16,7 +16,13 @@ trait EntityRepositoryComponent {
       s.withTransaction {
         val modifiedInstance = beforeInsert(beforeSave(instance))
 
-        val key = query returning query.map(_.id) += modifiedInstance
+        val key = instance.id match {
+          case Some(id) =>
+            query += modifiedInstance
+            id
+          case _ =>
+            query returning query.map(_.id) += modifiedInstance
+        }
 
         afterInsert(key, instance)
         afterSave(key, instance)
