@@ -23,9 +23,9 @@ class RelationshipSpec extends FunSpec with Matchers {
     val scorseseID = (directors returning directors.map(_.id)) += scorsese
 
     val usualSuspectsID = (movies returning movies.map(_.id)) +=
-      Movie(None, "The Usual Suspects", singerID, OneFetched(Movie.director, Some(singer)))
+      Movie(None, "The Usual Suspects", singerID)
     val goodfellasID = (movies returning movies.map(_.id)) +=
-      Movie(None, "Goodfellas", scorseseID, OneFetched(Movie.director, Some(scorsese)))
+      Movie(None, "Goodfellas", scorseseID)
 
     TableQuery[MoviesStars] ++= Seq(
       (usualSuspectsID, spaceyID),
