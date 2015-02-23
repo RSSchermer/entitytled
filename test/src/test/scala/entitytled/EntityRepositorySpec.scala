@@ -25,7 +25,7 @@ class EntityRepositorySpec extends FunSpec with Matchers {
     describe("updating Al Pacino's age to 74") {
       val star = Star(None, "Al Pacino", 73)
       val id = Star.insert(star)
-      Star.update(star.copy(id = Some(id), age = 74)(movies = star.movies))
+      Star.update(star.copy(id = Some(id), age = 74))
       val age = TableQuery[Stars].filter(_.id === id).map(_.age).firstOption.get
 
       it("should have updated the age to 74") {

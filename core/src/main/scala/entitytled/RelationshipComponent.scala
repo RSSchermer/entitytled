@@ -1,9 +1,7 @@
 package entitytled
 
-import monocle.Lens
-
 trait RelationshipComponent {
-  self: DriverComponent with TableComponent with RelationshipRepComponent =>
+  self: DriverComponent with EntityComponent with RelationshipRepComponent =>
 
   import driver.simple._
 
@@ -26,12 +24,9 @@ trait RelationshipComponent {
   }
 
   /** Represents a relationship between an owner entity and an owned relation. */
-  trait Relationship[From <: EntityTable[E], To <: Table[T], E <: Entity, T, Value]
+  trait Relationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T, Value]
     extends SideLoadable[From, E]
   {
-    /** Set a value for the owned relation on an owner entity instance. */
-    def setOn(instance: E, value: Value): E
-
     /** Returns a query for the owned relation for the owner entity with the
       * given id. */
     def queryFor(id: E#IdType): Query[To, T, Seq]
@@ -42,10 +37,6 @@ trait RelationshipComponent {
     /** Fetches the owned relation for the given owner entity. */
     def fetchFor(instance: E)(implicit session: Session): Value
 
-    /** Fetches and sets the owned relation for the given entity. */
-    def fetchOn(instance: E)(implicit session: Session): E =
-      setOn(instance, fetchFor(instance))
-
     /** Include side-loadables for the owned relation. */
     def include(sideLoad: SideLoadable[To, T]*): Relationship[From, To, E, T, Value]
 
@@ -53,7 +44,7 @@ trait RelationshipComponent {
   }
 
   /** Base class for direct relationships (without a join-table). */
-  abstract class DirectRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity, T, Value]
+  abstract class DirectRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T, Value]
       (implicit mapping: BaseColumnType[E#IdType])
     extends Relationship[From, To, E, T, Value]
   {
@@ -80,7 +71,7 @@ trait RelationshipComponent {
   }
 
   /** Base class for indirect relationships (with a join-table). */
-  abstract class ThroughRelationship[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity, T, Value]
+  abstract class ThroughRelationship[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity[E], T, Value]
       (implicit mapping: BaseColumnType[E#IdType])
     extends Relationship[From, To, E, T, Value]
   {
@@ -107,13 +98,8 @@ trait RelationshipComponent {
   }
 
   /** Implements relationship interface for 'to one' relationships. */
-  trait ToOneRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity, T] {
+  trait ToOneRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T] {
     self: Relationship[From, To, E, T, Option[T]] =>
-
-    val propertyLens: Lens[E, One[E, T]]
-
-    def setOn(instance: E, value: Option[T]): E =
-      propertyLens.set(OneFetched(this, value, instance.id))(instance)
 
     def fetchFor(id: E#IdType)(implicit session: Session): Option[T] =
       queryFor(id).firstOption
@@ -130,15 +116,15 @@ trait RelationshipComponent {
       val map = buildSideLoadMap(query)
 
       instances.map(instance => map.get(instance) match {
-        case Some(value) => setOn(instance, value)
-        case _ => setOn(instance, None)
+        case Some(value) => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](this, value))
+        case _ => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](this, None))
       })
     }
 
     def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E = {
       buildSideLoadMap(query).get(instance) match {
-        case Some(value) => setOn(instance, value)
-        case _ => setOn(instance, None)
+        case Some(value) => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](this, value))
+        case _ => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](this, None))
       }
     }
 
@@ -147,13 +133,8 @@ trait RelationshipComponent {
   }
 
   /** Implements relationship interface for 'to many' relationships. */
-  trait ToManyRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity, T] {
+  trait ToManyRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T] {
     self: Relationship[From, To, E, T, Seq[T]] =>
-
-    val propertyLens: Lens[E, Many[E, T]]
-
-    def setOn(instance: E, values: Seq[T]): E =
-      propertyLens.set(ManyFetched(this, values, instance.id))(instance)
 
     def fetchFor(id: E#IdType)(implicit session: Session): Seq[T] =
       queryFor(id).list
@@ -170,15 +151,15 @@ trait RelationshipComponent {
       val map = buildSideLoadMap(query)
 
       instances.map(instance => map.get(instance) match {
-        case Some(value) => setOn(instance, value)
-        case _ => setOn(instance, List())
+        case Some(value) => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](this, value))
+        case _ => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](this, List()))
       })
     }
 
     def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E = {
       buildSideLoadMap(query).get(instance) match {
-        case Some(value) => setOn(instance, value)
-        case _ => setOn(instance, List())
+        case Some(value) => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](this, value))
+        case _ => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](this, List()))
       }
     }
 
@@ -187,42 +168,38 @@ trait RelationshipComponent {
   }
 
   /** Represents a direct (without a join-table) 'to one' relationship. */
-  class ToOne[From <: EntityTable[E], To <: Table[T], E <: Entity, T](
+  class ToOne[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[To, T, Seq],
-      val joinCondition: (From, To) => Column[Boolean],
-      val propertyLens: Lens[E, One[E, T]])(implicit mapping: BaseColumnType[E#IdType])
+      val joinCondition: (From, To) => Column[Boolean])(implicit mapping: BaseColumnType[E#IdType])
     extends DirectRelationship[From, To, E, T, Option[T]]
     with ToOneRelationship[From, To, E, T]
 
   /** Represents a direct (without a join-table) 'to many' relationship. */
-  class ToMany[From <: EntityTable[E], To <: Table[T], E <: Entity, T](
+  class ToMany[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[To, T, Seq],
-      val joinCondition: (From, To) => Column[Boolean],
-      val propertyLens: Lens[E, Many[E, T]])(implicit mapping: BaseColumnType[E#IdType])
+      val joinCondition: (From, To) => Column[Boolean])(implicit mapping: BaseColumnType[E#IdType])
     extends DirectRelationship[From, To, E, T, Seq[T]]
     with ToManyRelationship[From, To, E, T]
 
   /** Represents an indirect (with a join-table) 'to one' relationship. */
-  class ToOneThrough[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity, T](
+  class ToOneThrough[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity[E], T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[(Through, To), _ <: (_, T), Seq],
-      val joinCondition: (From, (Through, To)) => Column[Boolean],
-      val propertyLens: Lens[E, One[E, T]])(implicit mapping: BaseColumnType[E#IdType])
+      val joinCondition: (From, (Through, To)) => Column[Boolean])(implicit mapping: BaseColumnType[E#IdType])
     extends ThroughRelationship[From, Through, To, E, T, Option[T]]
     with ToOneRelationship[From, To, E, T]
 
   /** Represents an indirect (with a join-table) 'to many' relationship. */
-  class ToManyThrough[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity, T](
+  class ToManyThrough[From <: EntityTable[E], Through <: Table[_], To <: Table[T], E <: Entity[E], T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[(Through, To), _ <: (_, T), Seq],
-      val joinCondition: (From, (Through, To)) => Column[Boolean],
-      val propertyLens: Lens[E, Many[E, T]])(implicit mapping: BaseColumnType[E#IdType])
+      val joinCondition: (From, (Through, To)) => Column[Boolean])(implicit mapping: BaseColumnType[E#IdType])
     extends ThroughRelationship[From, Through, To, E, T, Seq[T]]
     with ToManyRelationship[From, To, E, T]
 
-  abstract class SideLoadingRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity, T, Value](
+  abstract class SideLoadingRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T, Value](
       val relationship: Relationship[From, To, E, T, Value])
     extends Relationship[From, To, E, T, Value]
   {
@@ -234,14 +211,12 @@ trait RelationshipComponent {
   }
 
   /** Wraps 'to one' relationships for side-loading one or more side-loadables. */
-  class OneSideLoading[From <: EntityTable[E], To <: Table[T], E <: Entity, T](
+  class OneSideLoading[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
       override val relationship: Relationship[From, To, E, T, Option[T]] with ToOneRelationship[From, To, E, T],
       val sideLoads: Seq[SideLoadable[To, T]])
     extends SideLoadingRelationship[From, To, E, T, Option[T]](relationship)
     with ToOneRelationship[From, To, E, T]
   {
-    val propertyLens: Lens[E, One[E, T]] = relationship.propertyLens
-
     override def fetchFor(id: E#IdType)(implicit session: Session): Option[T] =
       relationship.fetchFor(id) match {
         case Some(instance) =>
@@ -252,6 +227,22 @@ trait RelationshipComponent {
 
     override def include(sideLoad: SideLoadable[To, T]*): OneSideLoading[From, To, E, T] =
       new OneSideLoading(relationship, sideLoads ++ sideLoad)
+
+    override def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
+      val map = buildSideLoadMap(query)
+
+      instances.map(instance => map.get(instance) match {
+        case Some(value) => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](relationship, value))
+        case _ => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](relationship, None))
+      })
+    }
+
+    override def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E = {
+      buildSideLoadMap(query).get(instance) match {
+        case Some(value) => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](relationship, value))
+        case _ => instance.addInclude[T, Option[T]](Include[E, T, Option[T]](relationship, None))
+      }
+    }
 
     override private[RelationshipComponent] def buildSideLoadMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Option[T]] = {
       val toQuery = sideLoadQuery(query).map(_._2)
@@ -265,14 +256,12 @@ trait RelationshipComponent {
   }
 
   /** Wraps 'to many' relationships for side-loading one or more side-loadables. */
-  class ManySideLoading[From <: EntityTable[E], To <: Table[T], E <: Entity, T](
+  class ManySideLoading[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
       override val relationship: Relationship[From, To, E, T, Seq[T]] with ToManyRelationship[From, To, E, T],
       val sideLoads: Seq[SideLoadable[To, T]])
     extends SideLoadingRelationship[From, To, E, T, Seq[T]](relationship)
     with ToManyRelationship[From, To, E, T]
   {
-    val propertyLens: Lens[E, Many[E, T]] = relationship.propertyLens
-
     override def fetchFor(id: E#IdType)(implicit session: Session): Seq[T] = {
       val toQuery = relationship.queryFor(id)
       sideLoads.foldLeft(relationship.fetchFor(id).toList)((i, s) => s.sideLoadOn(i, toQuery))
@@ -280,6 +269,22 @@ trait RelationshipComponent {
 
     override def include(sideLoad: SideLoadable[To, T]*): ManySideLoading[From, To, E, T] =
       new ManySideLoading(relationship, sideLoads ++ sideLoad)
+
+    override def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
+      val map = buildSideLoadMap(query)
+
+      instances.map(instance => map.get(instance) match {
+        case Some(value) => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](relationship, value))
+        case _ => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](relationship, List()))
+      })
+    }
+
+    override def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E = {
+      buildSideLoadMap(query).get(instance) match {
+        case Some(value) => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](relationship, value))
+        case _ => instance.addInclude[T, Seq[T]](Include[E, T, Seq[T]](relationship, List()))
+      }
+    }
 
     override private[RelationshipComponent] def buildSideLoadMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Seq[T]] = {
       val toQuery = sideLoadQuery(query).map(_._2)

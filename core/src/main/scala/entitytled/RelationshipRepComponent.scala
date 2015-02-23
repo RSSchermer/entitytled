@@ -3,12 +3,12 @@ package entitytled
 import language.existentials
 
 trait RelationshipRepComponent {
-  self: DriverComponent with TableComponent with RelationshipComponent =>
+  self: DriverComponent with EntityComponent with RelationshipComponent =>
 
   import driver.simple._
 
   /** Represents the value of a relationship for a specific owner instance. */
-  trait RelationshipRep[Owner <: Entity, Value] {
+  trait RelationshipRep[Owner <: Entity[Owner], Value] {
 
     /** The ID of the owner entity. */
     val ownerId: Option[Owner#IdType]
@@ -32,7 +32,7 @@ trait RelationshipRepComponent {
   /** Represents the value of a 'to one' relationship for a specific owner
     * instance.
     */
-  sealed abstract class One[E <: Entity, T]
+  sealed abstract class One[E <: Entity[E], T]
     extends RelationshipRep[E, Option[T]]
   {
     val relationship: ToOneRelationship[_ <: EntityTable[E], _ <: Table[T], E, T]
@@ -46,7 +46,7 @@ trait RelationshipRepComponent {
   /** Represents a fetched value of a 'to one' relationship for a specific owner
     * instance.
     */
-  case class OneFetched[E <: Entity, T](
+  case class OneFetched[E <: Entity[E], T](
       override val relationship: ToOneRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
       value: Option[T] = None,
       override val ownerId: Option[E#IdType] = None)
@@ -60,7 +60,7 @@ trait RelationshipRepComponent {
   /** Represents an unfetched value of a 'to one' relationship for a specific
     * owner instance.
     */
-  case class OneUnfetched[E <: Entity, T](
+  case class OneUnfetched[E <: Entity[E], T](
       override val relationship: ToOneRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
       override val ownerId: Option[E#IdType])
     extends One[E, T]
@@ -73,7 +73,7 @@ trait RelationshipRepComponent {
   /** Represents the value of a 'to many' relationship for a specific owner
     * instance.
     */
-  sealed abstract class Many[E <: Entity, T]
+  sealed abstract class Many[E <: Entity[E], T]
     extends RelationshipRep[E, Seq[T]]
   {
     val relationship: ToManyRelationship[_ <: EntityTable[E], _ <: Table[T], E, T]
@@ -87,7 +87,7 @@ trait RelationshipRepComponent {
   /** Represents a fetched value of a 'to many' relationship for a specific
     * owner instance.
     */
-  case class ManyFetched[E <: Entity, T](
+  case class ManyFetched[E <: Entity[E], T](
       override val relationship: ToManyRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
       values: Seq[T] = Seq(),
       override val ownerId: Option[E#IdType] = None)
@@ -101,7 +101,7 @@ trait RelationshipRepComponent {
   /** Represents a unfetched value of a 'to many' relationship for a specific
     * owner instance.
     */
-  case class ManyUnfetched[E <: Entity, T](
+  case class ManyUnfetched[E <: Entity[E], T](
       override val relationship: ToManyRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
       override val ownerId: Option[E#IdType])
     extends Many[E, T]

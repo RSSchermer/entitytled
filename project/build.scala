@@ -20,8 +20,6 @@ object BuildSettings {
 
 object Dependencies {
   val slick         = "com.typesafe.slick"          %%  "slick"           % "2.1.0"
-  val monocleCore   = "com.github.julien-truffaut"  %%  "monocle-core"    % "1.0.1"
-  val monocleMacros = "com.github.julien-truffaut"  %%  "monocle-macro"   % "1.0.1"
   val scalaTest     = "org.scalatest"               %%  "scalatest"       % "2.2.1"     % "test"
   val h2database    = "com.h2database"              %   "h2"              % "1.4.181"   % "test"
   val logback       = "ch.qos.logback"              %   "logback-classic" % "0.9.28"    % "test"
@@ -36,22 +34,34 @@ object EntitytledBuild extends Build {
     file("."),
     settings = buildSettings ++ Seq(
       publishArtifact := false)
-  ) aggregate(core, test)
+  ) aggregate(core, macros, test)
 
   lazy val core: Project = Project(
     "entitytled-core",
     file("core"),
     settings = buildSettings ++ Seq(
-      libraryDependencies ++= Seq(slick, monocleCore, monocleMacros)
+      libraryDependencies ++= Seq(slick)
     )
   )
+
+  lazy val macros: Project = Project(
+    "entitytled-macros",
+    file("macros"),
+    settings = buildSettings ++ Seq(
+      libraryDependencies ++= CrossVersion partialVersion scalaVersion.value collect {
+        case (2, scalaMajor) if scalaMajor < 11 =>
+          // if scala 2.11+ is used, quasiquotes are merged into scala-reflect
+          Seq("org.scalamacros" %% "quasiquotes" % "2.0.1")
+      } getOrElse Nil
+    )
+  ) dependsOn(core)
 
   lazy val test: Project = Project(
     "entitytled-test",
     file("test"),
     settings = buildSettings ++ Seq(
       publishArtifact      := false,
-      libraryDependencies ++= Seq(slick, h2database, scalaTest, logback)
+      libraryDependencies ++= Seq(h2database, scalaTest, logback)
     )
   ) dependsOn(core)
 }

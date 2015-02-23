@@ -3,12 +3,12 @@ package entitytled
 import scala.slick.lifted.{CanBeQueryCondition, Ordered}
 
 trait EntityBuilderComponent {
-  self: DriverComponent with TableComponent with RelationshipComponent =>
+  self: DriverComponent with EntityComponent with RelationshipComponent =>
 
   import driver.simple._
 
   /** Used to build a collection of entities along with possible side-loadables. */
-  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E], E <: Entity](implicit ev: BaseColumnType[E#IdType])
+  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E], E <: Entity[E]](implicit ev: BaseColumnType[E#IdType])
   {
     /** The base query representing the collection of entities. */
     val query: Query[T, E, Seq]
@@ -62,13 +62,13 @@ trait EntityBuilderComponent {
       new EntityCollectionBuilder[T, E](query, sideLoads ++ sideLoad)
   }
 
-  class EntityCollectionBuilder[T <: EntityTable[E], E <: Entity](
+  class EntityCollectionBuilder[T <: EntityTable[E], E <: Entity[E]](
       val query: Query[T, E, Seq],
       override val sideLoads: List[SideLoadable[T, E]])(implicit ev: BaseColumnType[E#IdType])
     extends AbstractEntityCollectionBuilder[T, E]
 
   /** Used to build an entity along with possible side-loadables. */
-  class EntityInstanceBuilder[T <: EntityTable[E], E <: Entity](
+  class EntityInstanceBuilder[T <: EntityTable[E], E <: Entity[E]](
       val query: Query[T, E, Seq],
       val sideLoads: List[SideLoadable[T, E]])
   {

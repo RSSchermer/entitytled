@@ -3,12 +3,12 @@ package entitytled
 import entitytled.exception.MissingIDException
 
 trait EntityRepositoryComponent {
-  self: DriverComponent with TableComponent with EntityBuilderComponent =>
+  self: DriverComponent with EntityComponent with EntityBuilderComponent =>
 
   import driver.simple._
 
   /** Repository class for managing the retrieval and persistence of entities. */
-  abstract class EntityRepository[T <: EntityTable[E], E <: Entity](implicit ev: BaseColumnType[E#IdType])
+  abstract class EntityRepository[T <: EntityTable[E], E <: Entity[E]](implicit ev: BaseColumnType[E#IdType])
     extends AbstractEntityCollectionBuilder[T, E]
   {
     /** Inserts a given entity instance into the database. */

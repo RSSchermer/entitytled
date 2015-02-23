@@ -165,6 +165,23 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         it("should have fetched The Usual Suspects") {
           spacey.movies.get.map(_.title) should contain ("The Usual Suspects")
         }
+
+        describe("with nested director side-loading") {
+          val spaceyWithDirectors = spaceyQuery.include(Star.movies.include(Movie.director)).get.get
+
+          it("should have fetched the movies for Kevin Spacey") {
+            spaceyWithDirectors.movies shouldBe a [ManyFetched[_, _]]
+          }
+
+          it("should have fetched the directors for each movie") {
+            forAll (spaceyWithDirectors.movies.get) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+          }
+
+          it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
+            spaceyWithDirectors.movies.get.find(_.title == "The Usual Suspects").get
+              .director.get.get.name should be ("Bryan Singer")
+          }
+        }
       }
     }
   }
