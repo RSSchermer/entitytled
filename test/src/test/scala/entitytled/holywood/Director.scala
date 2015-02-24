@@ -12,8 +12,6 @@ case class Director(
 {
   type IdType = DirectorID
 
-  def withIncludes(includes: Includes[Director]): Director = this.copy()(includes)
-
   val movies = many(Director.movies)
 }
 

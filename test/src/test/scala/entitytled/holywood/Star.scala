@@ -13,8 +13,6 @@ case class Star(
 {
   type IdType = StarID
 
-  def withIncludes(includes: Includes[Star]): Star = this.copy()(includes)
-
   val movies = many(Star.movies)
 }
 

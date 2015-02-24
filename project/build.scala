@@ -19,10 +19,10 @@ object BuildSettings {
 }
 
 object Dependencies {
-  val slick         = "com.typesafe.slick"          %%  "slick"           % "2.1.0"
-  val scalaTest     = "org.scalatest"               %%  "scalatest"       % "2.2.1"     % "test"
-  val h2database    = "com.h2database"              %   "h2"              % "1.4.181"   % "test"
-  val logback       = "ch.qos.logback"              %   "logback-classic" % "0.9.28"    % "test"
+  val slick         = "com.typesafe.slick"  %%  "slick"           % "2.1.0"
+  val scalaTest     = "org.scalatest"       %%  "scalatest"       % "2.2.1"     % "test"
+  val h2database    = "com.h2database"      %   "h2"              % "1.4.181"   % "test"
+  val logback       = "ch.qos.logback"      %   "logback-classic" % "0.9.28"    % "test"
 }
 
 object EntitytledBuild extends Build {
@@ -40,7 +40,7 @@ object EntitytledBuild extends Build {
     "entitytled-core",
     file("core"),
     settings = buildSettings ++ Seq(
-      libraryDependencies ++= Seq(slick)
+      libraryDependencies ++= Seq(slick, "org.scala-lang" % "scala-reflect" % scalaVersion.value)
     )
   )
 

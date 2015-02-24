@@ -1,5 +1,7 @@
 package entitytled
 
+import scala.reflect.runtime.{universe => ru}
+
 trait EntityComponent {
   self: DriverComponent with RelationshipComponent with RelationshipRepComponent =>
   
@@ -17,7 +19,22 @@ trait EntityComponent {
 
     val id: Option[IdType]
 
-    def withIncludes(includes: Includes[E]): E
+    def withIncludes(includes: Includes[E]): E = {
+      val m = ru.runtimeMirror(getClass.getClassLoader)
+      val instanceMirror = m.reflect(this)
+      val typeSignature = instanceMirror.symbol.typeSignature
+      val copyMethod = typeSignature.member(ru.newTermName("copy")).asMethod
+      val copyMirror = instanceMirror.reflectMethod(copyMethod)
+
+      def valueFor(p: ru.Symbol, i: Int): Any = {
+        val defaultArg = typeSignature.member(ru.newTermName(s"copy$$default$$${i+1}"))
+        instanceMirror.reflectMethod(defaultArg.asMethod)()
+      }
+
+      val primaryArgs = copyMethod.paramss.head.zipWithIndex.map(p => valueFor(p._1, p._2))
+      val args = primaryArgs :+ includes
+      copyMirror(args: _*).asInstanceOf[E]
+    }
 
     def addInclude[T, V](include: Include[E, T, V]): E =
       withIncludes(includes :+ include)
