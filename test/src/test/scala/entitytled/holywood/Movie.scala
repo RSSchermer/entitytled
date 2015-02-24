@@ -17,7 +17,7 @@ case class Movie(
   val stars = many(Movie.stars)
 }
 
-object Movie extends EntityRepository[Movies, Movie] with EntityCompanion[Movies, Movie] {
+object Movie extends EntityCompanion[Movies, Movie] {
   val query = TableQuery[Movies]
 
   val stars = toManyThrough[Stars, MoviesStars, Star](

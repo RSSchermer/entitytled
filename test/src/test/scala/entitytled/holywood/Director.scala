@@ -15,7 +15,7 @@ case class Director(
   val movies = many(Director.movies)
 }
 
-object Director extends EntityRepository[Directors, Director] with EntityCompanion[Directors, Director] {
+object Director extends EntityCompanion[Directors, Director] {
   val query = TableQuery[Directors]
 
   val movies = toMany[Movies, Movie](

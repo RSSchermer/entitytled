@@ -15,20 +15,13 @@ import entitytled.profile.H2Profile._
 import entitytled.profile.H2Profile.driver.simple._
 
 // Schema:
-// Defining the schema is largely the same as for plain Slick. Note that we
+// Defining the schema is largely the same as for plain Slick, except that we
 // extend EntityTable instead of Table; EntityTable's must define an id column.
 class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
   def id = column[DirectorID]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
 
-  def * = (id.?, name) <> (mapRecord, unmapRecord)
-  
-  // This is boilerplate that I hope may be replaced in the future by default
-  // implementations based on compile-time reflection:
-  def mapRecord(t: (Option[DirectorID], String)): Director =
-    Director(t._1, t._2, ManyUnfetched[Director, Movie](Director.movies, t._1))
-  def unmapRecord(d: Director): Option[(Option[DirectorID], String)] =
-    Some(d.id, d.name)
+  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
 }
 
 class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
@@ -36,12 +29,7 @@ class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
   def title = column[String]("title", O.NotNull)
   def directorID = column[DirectorID]("director_id", O.NotNull)
 
-  def * = (id.?, title, directorID) <> (mapRecord, unmapRecord)
-
-  def mapRecord(t: (Option[MovieID], String, DirectorID)): Movie =
-    Movie(t._1, t._2, t._3, OneUnfetched[Movie, Director](Movie.director, t._1))
-  def unmapRecord(m: Movie): Option[(Option[MovieID], String, DirectorID)] =
-    Some(m.id, m.title, m.directorID)
+  def * = (id.?, title, directorID) <> ((Movie.apply _).tupled, Movie.unapply)
 
   def director = foreignKey("MOVIES_DIRECTOR_FK", directorID, TableQuery[Directors])(_.id)
 }
@@ -51,19 +39,20 @@ case class DirectorID(value: Long) extends MappedTo[Long]
 
 case class Director(
     id: Option[DirectorID],
-    name: String,
-    movies: Many[Director, Movie] = ManyFetched(Director.movies, Seq()))
-  extends Entity { type IdType = DirectorID }
-
-object Director extends EntityRepository[Directors, Director] 
-  with EntityCompanion[Directors, Director] 
+    name: String)(implicit includes: Includes[Director])
+  extends Entity[Director]
 {
+  type IdType = DirectorID
+
+  val movies = many(Director.movies)
+}
+
+object Director extends EntityCompanion[Directors, Director] {
   val query = TableQuery[Directors]
 
   val movies = toMany[Movies, Movie](
     toQuery       = TableQuery[Movies],
-    joinCondition = _.id === _.directorID,
-    propertyLens  = lenser(_.movies))
+    joinCondition = _.id === _.directorID)
 }
 
 case class MovieID(value: Long) extends MappedTo[Long]
@@ -71,19 +60,20 @@ case class MovieID(value: Long) extends MappedTo[Long]
 case class Movie(
     id: Option[MovieID],
     title: String,
-    directorID: DirectorID,
-    director: One[Movie, Director])
-  extends Entity { type IdType = MovieID }
-
-object Movie extends EntityRepository[Movies, Movie] 
-  with EntityCompanion[Movies, Movie]
+    directorID: DirectorID)(implicit includes: Includes[Movie])
+  extends Entity[Movie]
 {
+  type IdType = MovieID
+
+  val director = one(Movie.director)
+}
+
+object Movie extends EntityCompanion[Movies, Movie] {
   val query = TableQuery[Movies]
 
   val director = toOne[Directors, Director](
     toQuery       = TableQuery[Directors],
-    joinCondition = _.directorID === _.id, 
-    propertyLens  = lenser(_.director))
+    joinCondition = _.directorID === _.id)
 }
 ```
 
@@ -130,7 +120,7 @@ Movie.delete(MovieID(10))
 ```
 
 (More detailed documentation is coming. For now, you might want to take a look
-at the [tests](/test/src/test/scala/entitytled) for more examples.)
+at the [tests](/test/src/test/scala/entitytled) for a more elaborate example.)
 
 ## License
 
