@@ -34,7 +34,7 @@ object EntitytledBuild extends Build {
     file("."),
     settings = buildSettings ++ Seq(
       publishArtifact := false)
-  ) aggregate(core, macros, test)
+  ) aggregate(core, test)
 
   lazy val core: Project = Project(
     "entitytled-core",
@@ -43,18 +43,6 @@ object EntitytledBuild extends Build {
       libraryDependencies ++= Seq(slick, "org.scala-lang" % "scala-reflect" % scalaVersion.value)
     )
   )
-
-  lazy val macros: Project = Project(
-    "entitytled-macros",
-    file("macros"),
-    settings = buildSettings ++ Seq(
-      libraryDependencies ++= CrossVersion partialVersion scalaVersion.value collect {
-        case (2, scalaMajor) if scalaMajor < 11 =>
-          // if scala 2.11+ is used, quasiquotes are merged into scala-reflect
-          Seq("org.scalamacros" %% "quasiquotes" % "2.0.1")
-      } getOrElse Nil
-    )
-  ) dependsOn(core)
 
   lazy val test: Project = Project(
     "entitytled-test",

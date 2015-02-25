@@ -22,14 +22,14 @@ class EntityBuilderSpec extends FunSpec with Matchers {
     val scorsese = Director(None, "Martin Scorsese")
     val scorseseID = (directors returning directors.map(_.id)) += scorsese
 
-    val usualSuspects = (movies returning movies.map(_.id)) +=
+    val usualSuspectsID = (movies returning movies.map(_.id)) +=
       Movie(None, "The Usual Suspects", singerID)
-    val goodfellas = (movies returning movies.map(_.id)) +=
+    val goodfellasID = (movies returning movies.map(_.id)) +=
       Movie(None, "Goodfellas", scorseseID)
 
     TableQuery[MoviesStars] ++= Seq(
-      (usualSuspects, spaceyID),
-      (goodfellas, deNiroID)
+      (usualSuspectsID, spaceyID),
+      (goodfellasID, deNiroID)
     )
 
     describe("star list") {
@@ -71,6 +71,26 @@ class EntityBuilderSpec extends FunSpec with Matchers {
           stars.find(_.name == "Kevin Spacey").get.movies.get.find(_.title == "The Usual Suspects").get
             .director.get.get.name should be ("Bryan Singer")
         }
+      }
+    }
+
+    describe("movies with director and star side-loading") {
+      val movies = Movie.include(Movie.director, Movie.stars).list
+
+      it("should have fetched the stars for each movie listed") {
+        forAll (movies) { movie => movie.stars shouldBe a [ManyFetched[_, _]] }
+      }
+
+      it("should have fetched the director for each movie listed") {
+        forAll (movies) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+      }
+
+      it("should have fetched Kevin Spacey for The Usual Suspects") {
+        movies.find(_.title == "The Usual Suspects").get.stars.get.map(_.name) should contain ("Kevin Spacey")
+      }
+
+      it("should have fetched Brian Singer for The Usual Suspects") {
+        movies.find(_.title == "The Usual Suspects").get.director.get.get.name should be ("Bryan Singer")
       }
     }
 
@@ -181,6 +201,35 @@ class EntityBuilderSpec extends FunSpec with Matchers {
             spaceyWithDirectors.movies.get.find(_.title == "The Usual Suspects").get
               .director.get.get.name should be ("Bryan Singer")
           }
+        }
+      }
+    }
+
+    describe("query for The Usual Suspects by ID") {
+      val suspectsQuery = Movie.one(usualSuspectsID)
+      val suspects = suspectsQuery.get.get
+
+      it("should have returned The Usual suspects") {
+        suspects.title should be ("The Usual Suspects")
+      }
+
+      describe("The Usual Suspects with director and star side-loading") {
+        val suspects = suspectsQuery.include(Movie.director, Movie.stars).get.get
+
+        it("should have fetched the stars for each movie listed") {
+          suspects.stars shouldBe a [ManyFetched[_, _]]
+        }
+
+        it("should have fetched the director for each movie listed") {
+          suspects.director shouldBe a [OneFetched[_, _]]
+        }
+
+        it("should have fetched Kevin Spacey for The Usual Suspects") {
+          suspects.stars.get.map(_.name) should contain ("Kevin Spacey")
+        }
+
+        it("should have fetched Brian Singer for The Usual Suspects") {
+          suspects.director.get.get.name should be ("Bryan Singer")
         }
       }
     }
