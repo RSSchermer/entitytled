@@ -99,7 +99,7 @@ class RelationshipSpec extends FunSpec with Matchers {
         }
 
         it("should have fetched Bryan Singer for The Usual Suspects") {
-          movies.find(_.title == "The Usual Suspects").get.director.get.get.name should be ("Bryan Singer")
+          movies.find(_.title == "The Usual Suspects").get.director.getValue.get.name should be ("Bryan Singer")
         }
       }
     }

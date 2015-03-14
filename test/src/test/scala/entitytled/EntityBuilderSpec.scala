@@ -49,11 +49,11 @@ class EntityBuilderSpec extends FunSpec with Matchers {
       }
 
       it("should have fetched The Usual Suspects for Kevin Spacey") {
-        stars.find(_.name == "Kevin Spacey").get.movies.get.map(_.title) should contain ("The Usual Suspects")
+        stars.find(_.name == "Kevin Spacey").get.movies.getValue.map(_.title) should contain ("The Usual Suspects")
       }
 
       it("should not have fetched The Usual Suspects for Robert De Niro") {
-        stars.find(_.name == "Robert De Niro").get.movies.get.map(_.title) should not contain "The Usual Suspects"
+        stars.find(_.name == "Robert De Niro").get.movies.getValue.map(_.title) should not contain "The Usual Suspects"
       }
 
       describe("with nested director side-loading") {
@@ -64,12 +64,12 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         }
 
         it("should have fetched the directors for each movie") {
-          forAll (stars.flatMap(_.movies.get)) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+          forAll (stars.flatMap(_.movies.getValue)) { movie => movie.director shouldBe a [OneFetched[_, _]] }
         }
 
         it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
-          stars.find(_.name == "Kevin Spacey").get.movies.get.find(_.title == "The Usual Suspects").get
-            .director.get.get.name should be ("Bryan Singer")
+          stars.find(_.name == "Kevin Spacey").get.movies.getValue.find(_.title == "The Usual Suspects").get
+            .director.getValue.get.name should be ("Bryan Singer")
         }
       }
     }
@@ -86,11 +86,11 @@ class EntityBuilderSpec extends FunSpec with Matchers {
       }
 
       it("should have fetched Kevin Spacey for The Usual Suspects") {
-        movies.find(_.title == "The Usual Suspects").get.stars.get.map(_.name) should contain ("Kevin Spacey")
+        movies.find(_.title == "The Usual Suspects").get.stars.getValue.map(_.name) should contain ("Kevin Spacey")
       }
 
       it("should have fetched Brian Singer for The Usual Suspects") {
-        movies.find(_.title == "The Usual Suspects").get.director.get.get.name should be ("Bryan Singer")
+        movies.find(_.title == "The Usual Suspects").get.director.getValue.get.name should be ("Bryan Singer")
       }
     }
 
@@ -183,7 +183,7 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         }
 
         it("should have fetched The Usual Suspects") {
-          spacey.movies.get.map(_.title) should contain ("The Usual Suspects")
+          spacey.movies.getValue.map(_.title) should contain ("The Usual Suspects")
         }
 
         describe("with nested director side-loading") {
@@ -194,12 +194,12 @@ class EntityBuilderSpec extends FunSpec with Matchers {
           }
 
           it("should have fetched the directors for each movie") {
-            forAll (spaceyWithDirectors.movies.get) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+            forAll (spaceyWithDirectors.movies.getValue) { movie => movie.director shouldBe a [OneFetched[_, _]] }
           }
 
           it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
-            spaceyWithDirectors.movies.get.find(_.title == "The Usual Suspects").get
-              .director.get.get.name should be ("Bryan Singer")
+            spaceyWithDirectors.movies.getValue.find(_.title == "The Usual Suspects").get
+              .director.getValue.get.name should be ("Bryan Singer")
           }
         }
       }
@@ -225,11 +225,11 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         }
 
         it("should have fetched Kevin Spacey for The Usual Suspects") {
-          suspects.stars.get.map(_.name) should contain ("Kevin Spacey")
+          suspects.stars.getValue.map(_.name) should contain ("Kevin Spacey")
         }
 
         it("should have fetched Brian Singer for The Usual Suspects") {
-          suspects.director.get.get.name should be ("Bryan Singer")
+          suspects.director.getValue.get.name should be ("Bryan Singer")
         }
       }
     }
