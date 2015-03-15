@@ -8,12 +8,15 @@ trait RelationshipRepComponent {
   import driver.simple._
 
   /** Represents the value of a relationship for a specific owner instance. */
-  trait RelationshipRep[Owner <: Entity[Owner], Value] {
+  trait RelationshipRep[Owner <: Entity[Owner], T, Value] {
+
+    /** The represented relationship. */
+    val relationship: Relationship[_ <: EntityTable[Owner], _ <: Table[T], Owner, T, Value]
 
     /** The ID of the owner entity. */
     val ownerId: Option[Owner#IdType]
 
-    /** Decribes whether or not the represented value was already fetched into
+    /** Describes whether or not the represented value was already fetched into
       * memory. */
     val isFetched: Boolean
 
@@ -29,14 +32,31 @@ trait RelationshipRepComponent {
       if (isFetched) getValue else fetchValue
   }
 
-  /** Represents the value of a 'to one' relationship for a specific owner
-    * instance.
-    */
-  sealed abstract class One[E <: Entity[E], T]
-    extends RelationshipRep[E, Option[T]]
-  {
-    val relationship: ToOneRelationship[_ <: EntityTable[E], _ <: Table[T], E, T]
+  /** Represents a value of a relationship that is already fetched from storage. */
+  trait Fetched[Value] {
+    self: RelationshipRep[_ <: Entity[_], _, Value] =>
+    
+    val value: Value
+    
+    val isFetched: Boolean = true
 
+    def getValue: Value = value
+  }
+
+  /** Represents a value of a relationship that is not yet fetched from storage. */
+  trait Unfetched[Value] {
+    self: RelationshipRep[_ <: Entity[_], _, Value] =>
+
+    val isFetched: Boolean = false
+
+    def getValue: Value = throw new NoSuchElementException("Unfetched.get")
+  }
+
+  /** Represents the value of a 'to one' relationship for a specific owner
+    * instance. */
+  sealed abstract class One[E <: Entity[E], T]
+    extends RelationshipRep[E, T, Option[T]]
+  {
     def fetchValue(implicit session: Session): Option[T] = ownerId match {
       case Some(id) => relationship.fetchFor(id)
       case _ => None
@@ -47,37 +67,25 @@ trait RelationshipRepComponent {
     * instance.
     */
   case class OneFetched[E <: Entity[E], T](
-      override val relationship: ToOneRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
+      relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Option[T]],
       value: Option[T] = None,
-      override val ownerId: Option[E#IdType] = None)
-    extends One[E, T]
-  {
-    val isFetched: Boolean = true
-
-    def getValue: Option[T] = value
-  }
+      ownerId: Option[E#IdType] = None)
+    extends One[E, T] with Fetched[Option[T]]
 
   /** Represents an unfetched value of a 'to one' relationship for a specific
     * owner instance.
     */
   case class OneUnfetched[E <: Entity[E], T](
-      override val relationship: ToOneRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
-      override val ownerId: Option[E#IdType])
-    extends One[E, T]
-  {
-    val isFetched: Boolean = false
-
-    def getValue: Option[T] = throw new NoSuchElementException("OneUnfetched.get")
-  }
+      relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Option[T]],
+      ownerId: Option[E#IdType])
+    extends One[E, T] with Unfetched[Option[T]]
 
   /** Represents the value of a 'to many' relationship for a specific owner
     * instance.
     */
   sealed abstract class Many[E <: Entity[E], T]
-    extends RelationshipRep[E, Seq[T]]
+    extends RelationshipRep[E, T, Seq[T]]
   {
-    val relationship: ToManyRelationship[_ <: EntityTable[E], _ <: Table[T], E, T]
-
     def fetchValue(implicit session: Session): Seq[T] = ownerId match {
       case Some(id) => relationship.fetchFor(id)
       case _ => List()
@@ -88,26 +96,16 @@ trait RelationshipRepComponent {
     * owner instance.
     */
   case class ManyFetched[E <: Entity[E], T](
-      override val relationship: ToManyRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
-      values: Seq[T] = Seq(),
-      override val ownerId: Option[E#IdType] = None)
-    extends Many[E, T]
-  {
-    val isFetched: Boolean = true
-
-    def getValue: Seq[T] = values
-  }
+      relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Seq[T]],
+      value: Seq[T] = Seq(),
+      ownerId: Option[E#IdType] = None)
+    extends Many[E, T] with Fetched[Seq[T]]
 
   /** Represents a unfetched value of a 'to many' relationship for a specific
     * owner instance.
     */
   case class ManyUnfetched[E <: Entity[E], T](
-      override val relationship: ToManyRelationship[_ <: EntityTable[E], _ <: Table[T], E, T],
-      override val ownerId: Option[E#IdType])
-    extends Many[E, T]
-  {
-    val isFetched: Boolean = false
-
-    def getValue: Seq[T] = throw new NoSuchElementException("ManyUnfetched.get")
-  }
+      relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Seq[T]],
+      ownerId: Option[E#IdType])
+    extends Many[E, T] with Unfetched[Seq[T]]
 }
