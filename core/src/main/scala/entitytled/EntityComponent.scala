@@ -7,8 +7,7 @@ trait EntityComponent {
   
   import driver.simple._
 
-  type Includable[E <: Entity[E]] = RelationshipRep[E, _, V] with Fetched[V] forSome { type V }
-  type Includes[E <: Entity[E]] = Seq[Includable[E]]
+  type Includes[E <: Entity[E]] = Map[Relationship[_ <: EntityTable[E], _ <: Table[_], E, _, _], Any]
   
   /** Base class for entities. Entities need to be uniquely identifiable by an ID. */
   abstract class Entity[E <: Entity[E]](implicit val includes: Includes[E]) {
@@ -33,19 +32,26 @@ trait EntityComponent {
       copyMirror(args: _*).asInstanceOf[E]
     }
 
-    def addInclude(include: Includable[E]): E =
-      withIncludes(includes :+ include)
+    def setInclude[T, V](relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, V], value: V): E =
+      withIncludes(includes + (relationship -> value))
+
+    def setInclude[T, V](relationshipRep: RelationshipRep[E, T, V] with Fetched[V]): E =
+      setInclude(relationshipRep.relationship, relationshipRep.value)
 
     def one[T](relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Option[T]]): One[E, T] =
-      includes.find(_.relationship == relationship) match {
-        case Some(include) => include.asInstanceOf[OneFetched[E, T]]
-        case _ => OneUnfetched[E, T](relationship, id.asInstanceOf[Option[E#IdType]])
+      includes.get(relationship) match {
+        case Some(value) =>
+          OneFetched[E, T](relationship, value.asInstanceOf[Option[T]], id.asInstanceOf[Option[E#IdType]])
+        case _ =>
+          OneUnfetched[E, T](relationship, id.asInstanceOf[Option[E#IdType]])
       }
 
     def many[T](relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Seq[T]]): Many[E, T] =
-      includes.find(_.relationship == relationship) match {
-        case Some(include) => include.asInstanceOf[ManyFetched[E, T]]
-        case _ => ManyUnfetched[E, T](relationship, id.asInstanceOf[Option[E#IdType]])
+      includes.get(relationship) match {
+        case Some(value) =>
+          ManyFetched[E, T](relationship, value.asInstanceOf[Seq[T]], id.asInstanceOf[Option[E#IdType]])
+        case _ =>
+          ManyUnfetched[E, T](relationship, id.asInstanceOf[Option[E#IdType]])
       }
   }
 

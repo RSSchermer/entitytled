@@ -14,7 +14,7 @@ trait EntityCompanionComponent {
   abstract class EntityCompanion[T <: EntityTable[E], E <: Entity[E]](implicit ev: BaseColumnType[E#IdType])
     extends EntityRepository[T, E]
   {
-    implicit val defaultIncludes: Includes[E] = Seq()
+    implicit val defaultIncludes: Includes[E] = Map()
 
     val query: Query[T, E, Seq]
 
