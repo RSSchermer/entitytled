@@ -1,66 +1,250 @@
 # Entitytled
 
-Entitytled is a data access and persistence library build on top of the amazing 
-[Scala Slick](http://slick.typesafe.com/) library.
+Entitytled is an ORM-like data access and persistence library build on top of 
+the amazing [Scala Slick](http://slick.typesafe.com/) library. Entitytled 
+introduces to concepts "entity" and "relationship" with the aims of bringing 
+more structure and consistency, and eliminating boilerplate.
 
 [![Build Status](https://travis-ci.org/RSSchermer/entitytled.svg?branch=master)](https://travis-ci.org/RSSchermer/entitytled)
 
-NOTE: Entitytled is currently still under development and may be subject to
-large breaking changes.
+Notable features include:
 
-## Simple Example
+- Type safety: build on top of the type safe Slick library.
+- Object Oriented-style relationship access: navigate relationships as fields
+  (`director.movies`) instead of relying on tuples (`directorWithMovies._2`).
+- Relationship eager-loading: eager-loading one or more relationships or
+  arbitrarily nested relationships is supported.
+
+The rest of this readme is a usage guide. The examples used in the guide are
+based on the tests for this library, so if at any point you get confused, it 
+may help to [have a look at the tests](test/src/test/scala/entitytled).
+
+## Artifact installation
+
+
+## Defining an Entity type
+
+In Entitytled, entity types are case classes which extend the `Entity` class.
+They need to be accompanied by an `EntityTable` definition, which describes the
+schema for the entity. They may additionally by accompanied by an 
+`EntityCompanion` object, which provides a default set of methods for querying
+and persisting entities.
+
+This example defines a Director entity, which models a Holywood movie director:
 
 ```scala
 import entitytled.profile.H2Profile._
 import entitytled.profile.H2Profile.driver.simple._
 
-// Schema:
-// Defining the schema is largely the same as for plain Slick, except that we
-// extend EntityTable instead of Table; EntityTable's must define an id column.
-class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
-  def id = column[DirectorID]("id", O.PrimaryKey, O.AutoInc)
-  def name = column[String]("name", O.NotNull)
-
-  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
-}
-
-class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
-  def id = column[MovieID]("id", O.PrimaryKey, O.AutoInc)
-  def title = column[String]("title", O.NotNull)
-  def directorID = column[DirectorID]("director_id", O.NotNull)
-
-  def * = (id.?, title, directorID) <> ((Movie.apply _).tupled, Movie.unapply)
-
-  def director = foreignKey("MOVIES_DIRECTOR_FK", directorID, TableQuery[Directors])(_.id)
-}
-
-// Model:
-case class DirectorID(value: Long) extends MappedTo[Long]
-
 case class Director(
-    id: Option[DirectorID],
-    name: String)(implicit includes: Includes[Director])
+    id: Option[Long],
+    name: String,
+    age: Int)
   extends Entity[Director]
 {
-  type IdType = DirectorID
-
-  val movies = many(Director.movies)
+  type IdType = Long
 }
 
 object Director extends EntityCompanion[Directors, Director] {
   val query = TableQuery[Directors]
-
-  val movies = toMany[Movies, Movie](
-    toQuery       = TableQuery[Movies],
-    joinCondition = _.id === _.directorID)
 }
 
-case class MovieID(value: Long) extends MappedTo[Long]
+class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+  def name = column[String]("name", O.NotNull)
+  def age = column[Int]("age", O.NotNull)
 
+  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
+}
+```
+
+Lets break this example up and take a closer look at the individual pieces.
+
+### Importing a profile
+
+Slick provides drivers for multiple databases. Entitytled can be used with any
+driver that implements `scala.slick.driver.JdbcProfile`. The Director example
+uses a predefined profile for the [H2 database](http://www.h2database.com):
+
+```scala
+import entitytled.profile.H2Profile._
+import entitytled.profile.H2Profile.driver.simple._
+```
+
+The first line imports Entitytled's functionality for Slick's H2 driver and the 
+second line imports Slick's own functionality for the H2 driver. (Note: 
+Entitytled also supports dependency injection via the cake pattern. However, 
+these examples will use hard-coded import statements instead, as the cake 
+pattern adds a certain amount of complexity.) 
+
+Predefined profiles exist for several other databases:
+
+- `entitytled.profile.PostgresProfile` for use with [PostgreSQL](http://www.postgresql.org).
+- `entitytled.profile.MySQLProfile` for use with [MySQL](http://www.mysql.com).
+- `entitytled.profile.SQLiteProfile` for use with [SQLite](https://sqlite.org).
+- `entitytled.profile.DerbyProfile` for use with [Apache Derby](https://db.apache.org/derby).
+- `entitytled.profile.HsqldbProfile` for use with [HyperSQL DataBase](http://hsqldb.org).
+
+To use e.g. PostgreSQL instead of H2 use:
+
+```scala
+import entitytled.profile.PostgresProfile._
+import entitytled.profile.PostgresProfile.driver.simple._
+```
+
+You may also define your own profile for a driver that is not included in the
+standard distribution of Slick:
+
+```scala
+import entitytled.Entitytled
+import my.driver.MyDriver
+
+trait MyProfile extends Entitytled {
+  val driver: MyDriver = MyDriver
+}
+
+object MyProfile extends MyProfile
+```
+
+And use it like this:
+
+```scala
+import entitytled.profile.MyProfile._
+import entitytled.profile.MyProfile.driver.simple._
+```
+
+### Defining the Entity type case class
+
+The second segment of interest in the Director example is the definition of 
+the `Director` case class:
+
+```scala
+case class Director(
+    id: Option[Long],
+    name: String,
+    age: Int)
+  extends Entity[Director]
+{
+  type IdType = Long
+}
+```
+
+The `Director` case class extends the `Entity` base class, which takes the
+`Director` type itself as a type parameter (a self bound):
+
+```scala
+extends Entity[Director]
+```
+
+An entity type also has to define an `id` field and the type of this id field.
+Currently the type of the id has to specified in the class body:
+
+```
+{
+  type IdType = Long
+}
+```
+
+The `id` field then needs to be of type `Option[IdType]`, which in this case
+means it needs to be an `Option[Long]`.
+
+### Defining the EntityCompanion object
+
+Next the Director example defines a `Director` companion object for the
+`Director` case class: 
+
+```scala
+object Director extends EntityCompanion[Directors, Director] {
+  val query = TableQuery[Directors]
+}
+```
+
+This companion object will be our entry point for querying and persisting 
+directors. It extends `EntityCompanion` which takes the table type `Directors`
+and the entity type `Director` as type parameters. It also has to define a
+`query` field:
+
+```scala
+val query = TableQuery[Directors]
+```
+This is a bit of boilerplate which will hopefully be made obsolete in the 
+future.
+
+### Defining the EntityTable type
+
+The final part of the Director example concerns the definition of the
+`Directors` table:
+
+```scala
+class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+  def name = column[String]("name", O.NotNull)
+  def age = column[Int]("age", O.NotNull)
+
+  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
+}
+```
+
+Table definition is essentially the same as it is in Slick and you can find
+more details in [Slick's documentation on the subject](http://slick.typesafe.com/doc/2.1.0/schemas.html).
+Instead of extending a regular `Table`, a table definition for an entity needs
+to extend the `EntityTable` base class. The `EntityTable` base class requires
+that you at least define an `id` method that returns a value of type 
+`Column[IdType]`.
+
+### Safer id fields
+
+To keep this example simple, `IdType` was specified simply as `Long`. However,
+if we'd also have a `Producer` entity type, which also specified its `IdType`
+as a simple `Long`, we could be at risk of mixing up our director ids with our
+producer ids. Slick therefore also supports using more precise types that wrap
+a primitive type. We could make use of this to make our `id` field a bit safer:
+
+```scala
+case class DirectorID(value: Long) extends MappedTo[Long]
+```
+
+We'd then have to update our `Director` case class definition as follows:
+
+```scala
+case class Director(
+    id: Option[DirectorID],
+    name: String,
+    age: Int)
+  extends Entity[Director]
+{
+  type IdType = DirectorID
+}
+```
+
+And our `Directors` table definition:
+
+```scala
+class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+  def name = column[String]("name", O.NotNull)
+  def age = column[Int]("age", O.NotNull)
+
+  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
+}
+```
+
+## Defining direct relationships
+
+Direct relationships are relationships that involve at most 2 tables: 1 table 
+for the owner entity type and one table for the target relation. The 
+relationship is is defined by a foreign key, either on the owner or the target.
+
+### Direct 'to one' relationships
+
+Let's define a `Movie` entity type which has a 'to one' relationship with the 
+`Director` entity type:
+
+```scala
 case class Movie(
-    id: Option[MovieID],
+    id: Option[Long],
     title: String,
-    directorID: DirectorID)(implicit includes: Includes[Movie])
+    directorID: Long)(implicit includes: Includes[Movie])
   extends Entity[Movie]
 {
   type IdType = MovieID
@@ -75,53 +259,328 @@ object Movie extends EntityCompanion[Movies, Movie] {
     toQuery       = TableQuery[Directors],
     joinCondition = _.directorID === _.id)
 }
+
+class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
+  def id = column[MovieID]("id", O.PrimaryKey, O.AutoInc)
+  def title = column[String]("title", O.NotNull)
+  def directorID = column[DirectorID]("director_id", O.NotNull)
+
+  def * = (id.?, title, directorID) <> ((Movie.apply _).tupled, Movie.unapply)
+
+  def director = foreignKey("MOVIES_DIRECTOR_FK", directorID, TableQuery[Directors])(_.id)
+}
 ```
 
-We could now query for entities as follows:
+The `Movie` 'to one' `Director` relationship in this example is a direct
+relationship; yhe foreign key in this example is the `directorID` field on the
+`Movie` entity type. We've also specified a foreign key constraint in our table
+definition (see [Slick's documentation for more details on table definition](http://slick.typesafe.com/doc/2.1.0/schemas.html)):
 
 ```scala
-// Find a movie by its ID:
-val movie = Movie.find(MovieID(8)) // Option[Movie] The Usual Suspects
+def director = foreignKey("MOVIES_DIRECTOR_FK", directorID, TableQuery[Directors])(_.id)
+```
 
-// Get its director through explicit late loading:
-movie.director.getOrFetch // Option[Director] Bryan Singer
+Aside from having a foreign key field, `Movie` differs in some other ways from
+the simpler `Director` example that did not have any relationships. The first is 
+the addition of an implicit `includes` parameter to the case class constructor:
 
-// You could also have side-loaded the director to limit the number of queries:
-Movie.include(Movie.director).list.foreach {
-  // Only 2 queries instead of n + 1 (where n is the number of movies in the list)
-  println _.director.getOrFetch
+```scala
+(implicit includes: Includes[Movie])
+```
+
+This is to support eager-loading (a topic discussed in more detail in the
+"Querying an Entity set" section of this guide). It does not have to be named
+`includes`, but it does have to be of type `Includes[EntityType]`, which in this 
+case means it has to be of type `Includes[Movie]`.
+
+The second difference is the addition of a `director` field in the case class
+body:
+
+```scala
+val director = one(Movie.director)
+```
+
+Let's skip that difference for a second and look at the third difference first,
+the addition of a `director` field on the companion object:
+
+```scala
+val director = toOne[Directors, Director](
+  toQuery       = TableQuery[Directors],
+  joinCondition = _.directorID === _.id)
+```
+
+This describes the relationship. It calls the `toOne` function, which takes 2
+type parameters: the target table type (`Directors` in this case) and the 
+target type (`Director` in this case). It also takes 2 arguments:
+
+- `toQuery`: a query identifying the set of all target relations of the target
+  type that could possibly be related to a movie. In this case the target type
+  is `Director`, so the `toQuery` must identify a set of directors.
+- `joinCondition`: the condition that joins a specific owner instance to the
+  subset of relations identified by `toQuery` that belong to it. In this case
+  `_.directorID === _.id` means that a certain director belongs to a movie if
+  his `id` equals the `directorID` of that movie (the foreign key constraint).
+
+Now, let's take another look at the `director` field on our `Movie` case class:
+
+```scala
+val director = one(Movie.director)
+```
+
+This calls the `one` function, which takes the relationship we described in
+the companion object as an argument. If we have a specific movie instance, this
+field will represent the related director:
+
+```scala
+vertigo.director // Alfred Hitchcock
+```
+
+Navigating relationships is described in more detail in its own section.
+
+### Direct 'to many' relationships
+
+Direct 'to many' relationships are very similar to 'to one' relationships.
+Here's a modified version of the simple `Director` example, except now with a
+'to many' relationship to the `Movie` type:
+
+```scala
+case class Director(
+    id: Option[Long],
+    name: String,
+    age: Int)(implicit includes: Includes[Director])
+  extends Entity[Director]
+{
+  type IdType = Long
+  
+  val movies = many(Director.movies)
 }
 
-// You can side-load multiple relationships at once:
-Movie.include(Movie.director, Movie.stars).list
+object Director extends EntityCompanion[Directors, Director] {
+  val query = TableQuery[Directors]
+  
+  val movies = toMany[Movies, Movie](
+    toQuery       = TableQuery[Movies],
+    joinCondition = _.id === _.directorID)
+}
 
-// You can also nest side-load on other side-loads (to arbitrary depth):
-val director = Director.include(Director.movies.include(Movie.stars))
-  .find(DirectorID(3)).get
-director.movies.getOrFetch.flatMap(_.stars.getOrFetch).foreach { println }
+class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+  def name = column[String]("name", O.NotNull)
+  def age = column[Int]("age", O.NotNull)
 
-// You can build more complex entity collections with sorting, filtering, etc.:
-Director.filter(_.age >= 65).sortBy(_.name.asc).drop(100).take(10)
-  .include(Director.movies).list
+  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
+}
 ```
 
-We can also create, update and delete entities:
+There's no foreign key field here, that's already covered by the foreign key
+on the `Movie` type. Just as with the `Movie` type, an implicit `includes`
+constructor argument was added to the case class to enable eager-loading. 
+
+We've added a `movies` field to case class body, except this time it calls the
+`many` function instead of the `one` function:
 
 ```scala
-// Create
-Movie.insert(Movie(None, "Goodfellas", DirectorID(12)))
+val movies = many(Director.movies)
+```
+ 
+`many` works exactly the same as `one`, except it is used for representing a 
+related collection, instead of a single related instance.
 
-// Update
-val movie = Movie.filter(_.title === "The Matrix 2").firstOption.get
-Movie.update(movie.copy(title = "The Matrix Reloaded"))
+The last change made is the addition of the `movies` field on the companion
+object:
 
-// Delete
-Movie.delete(MovieID(10))
+```scala
+val movies = toMany[Movies, Movie](
+  toQuery       = TableQuery[Movies],
+  joinCondition = _.id === _.directorID)
 ```
 
-(More detailed documentation is coming. For now, you might want to take a look
-at the [tests](/test/src/test/scala/entitytled) for a more elaborate example.)
+This is basically the inverse of the `director` field on the `Movie` companion
+object described in the previous section. Together, this 'to many' relationship
+specification and the 'to one' relationship on the `Movie` companion object,
+form the full '`Director` one-to-many `Movie`' relationship.
 
-## License
+One thing better illustrated for a 'to many' relationship (but technically also
+possible for a 'to one' relationship) is that we can further constrain the set
+of possible related instances via the `toQuery` argument. We might for example 
+define a relationship for only black-and-white movies:
 
-MIT
+```scala
+val blackAndWhiteMovies = toMany[Movies, Movie](
+  toQuery       = TableQuery[Movies].filter(_.color === false),
+  joinCondition = _.id === _.directorID)
+```
+
+## Defining indirect relationships (many-to-many)
+
+Indirect relationships rely on a 'join table'. Instead of one of the tables for
+the 2 related types defining a foreign key, another table is responsible for
+recording the relationships between these types. This is typically how
+'many-to-many' relationships are described.
+
+As an example we'll set a many-to-many relationship between the `Movie` type
+used in the direct relationships example, and a new `Star` type, which describes
+a Holywood movie star. This is what the join table looks like:
+
+```scala
+class MoviesStars(tag: Tag) extends Table[(Long, Long)](tag, "MOVIES_STARS") {
+  def movieID = column[Long]("movie_id", O.NotNull)
+  def starID = column[Long]("star_id", O.NotNull)
+
+  def * = (movieID, starID)
+
+  def pk = primaryKey("MOVIES_STARS_PK", (movieID, starID))
+  def movie = foreignKey("MOVIES_STARS_MOVIE_FK", movieID, TableQuery[Movies])(_.id)
+  def star = foreignKey("MOVIES_STARS_STAR_FK", starID, TableQuery[Stars])(_.id)
+}
+```
+
+Note that this does not extend `EntityTable`, it just extends Slick's plain old
+`Table`. That's because the rows in this table do not represent entities, it's
+simply a construct to describe our many-to-many relationship. There are 2 
+foreign keys, one for the star's id and one for the movie's id, and the
+`(movieID, StarID)` pair makes up a row's primary key.
+
+Now for the `Movie` type:
+
+```scala
+case class Movie(
+    id: Option[Long],
+    title: String)(implicit includes: Includes[Movie])
+  extends Entity[Movie]
+{
+  type IdType = MovieID
+  
+  val stars = many(Movie.stars)
+}
+
+object Movie extends EntityCompanion[Movies, Movie] {
+  val query = TableQuery[Movies]
+  
+  val stars = toManyThrough[Stars, MoviesStars, Star](
+    toQuery       = TableQuery[MoviesStars] innerJoin TableQuery[Stars] on(_.starID === _.id),
+    joinCondition = _.id === _._1.movieID)
+}
+
+class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
+  def id = column[MovieID]("id", O.PrimaryKey, O.AutoInc)
+  def title = column[String]("title", O.NotNull)
+
+  def * = (id.?, title) <> ((Movie.apply _).tupled, Movie.unapply)
+}
+```
+
+It's very similar to the `Movie` type definition in the Direct relationships
+example. The `Director` relationship stuff (foreign key and `director` fields
+on the case class and companion object) has been removed to keep it simple.
+
+We've added a `stars` field to the case class body so we can navigate the
+relationship again:
+
+```scala
+val stars = many(Movie.stars)
+```
+
+This works exactly the same for direct 'to many' relationships as it does for
+indirect 'to many' relationships.
+
+The only real difference comes with the `stars` field on the companion object:
+
+```scala
+val stars = toManyThrough[Stars, MoviesStars, Star](
+  toQuery       = TableQuery[MoviesStars] innerJoin TableQuery[Stars] on(_.starID === _.id),
+  joinCondition = _.id === _._1.movieID)
+```
+
+Instead of calling `toMany` as we would do for a direct relationship, we call
+`toManyThrough`. `toManyThrough` takes 3 type parameters: the target table type,
+the join table type and the target type, in this case `[Stars, MoviesStars, Star]`.
+
+The `toQuery` argument has become a lot more complicated. Instead of a query
+that represents a set of target instances, the `toQuery` for an indirect
+relationship represents a set of `(JoinType, TargetType)` pairs, in this case
+`(MoviesStars, Stars)`. The join condition now has to join the owner type to 
+this `(JoinType, TargetType)` pair:
+ 
+```scala
+joinCondition = _.id === _._1.movieID
+```
+
+To complete the example, here's the specification of the `Star` type:
+
+```scala
+case class Star(
+    id: Option[Long],
+    name: String)(implicit includes: Includes[Star])
+  extends Entity[Star]
+{
+  type IdType = Long
+
+  val movies = many(Star.movies)
+}
+
+object Star extends EntityCompanion[Stars, Star] {
+  val query = TableQuery[Stars]
+
+  val movies = toManyThrough[Movies, MoviesStars, Movie](
+    toQuery       = TableQuery[MoviesStars] innerJoin TableQuery[Movies] on(_.movieID === _.id),
+    joinCondition = _.id === _._1.starID)
+}
+
+class Stars(tag: Tag) extends EntityTable[Star](tag, "STARS") {
+  def id = column[StarID]("id", O.PrimaryKey, O.AutoInc)
+  def name = column[String]("name", O.NotNull)
+
+  def * = (id.?, name) <> ((Star.apply _).tupled, Star.unapply)
+}
+```
+
+There's nothing new going on here, it just defines the inverse relationship to
+complete the full many-to-many relationship.
+
+## Querying an Entity set
+
+The starting point of an entity query is the companion object for that entity.
+Entity queries work via a wrapper around standard Slick queries; it's also
+perfectly possible to use plain Slick queries, but you lose the ability to do
+relationship eager-loading.
+
+### Retrieving a single entity
+
+The `find` method can be used to retrieve a specific entity by its `id`:
+
+```scala
+Director.find(158) // Option[Director]
+```
+
+This will return a value of type `Option[Director]` (`Some(director)` if an
+entity with the given id was found, `None` otherwise).
+
+The `firstOption` method can be used to retrieve the first entity in the query
+according to its current ordering:
+
+```scala
+Director.sortBy(_.age.asc).firstOption // The youngest director
+```
+
+### Retrieving a collection of Entities
+
+### Eager-loading
+
+### Retrieving non-Entity results
+
+## Navigating relationships
+
+## Inserting a new Entity
+
+## Updating an Entity
+
+## Deleting an Entity
+
+## Updating relationships
+
+## Avoiding runtime reflection
+
+## Play framework
+
+## Examples
