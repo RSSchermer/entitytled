@@ -25,6 +25,12 @@ trait EntityBuilderComponent {
       new EntityCollectionBuilder[T, E](query.filter(f), sideLoads)
     }
 
+    /** Narrows the query to only those entities that do not satisfy the
+      * predicate. */
+    def filterNot[C <: Column[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C]) = {
+      new EntityCollectionBuilder[T, E](query.filterNot(f), sideLoads)
+    }
+
     /** Sort this query according to a function which extracts the ordering
       * criteria from the entities. */
     def sortBy[C](f: (T) => C)(implicit arg0: (C) ⇒ Ordered) =
