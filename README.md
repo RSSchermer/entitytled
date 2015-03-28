@@ -14,13 +14,57 @@ Notable features include:
   (`director.movies`) instead of relying on tuples (`directorWithMovies._2`).
 - Relationship eager-loading: eager-loading one or more relationships or
   arbitrarily nested relationships is supported.
+- Basic CRUD methods for inserting, finding, updating and deleting entities.
 
 The rest of this readme is a usage guide. The examples used in the guide are
 based on the tests for this library, so if at any point you get confused, it 
 may help to [have a look at the tests](test/src/test/scala/entitytled).
 
+## Table of contents
+
+- [Artifact installation](#artifact-installation)
+- [Defining an Entity type](#defining-an-entity-type)
+  - [Importing a profile](#importing-a-profile)
+  - [Defining the Entity type](#defining-the-entity-type)
+  - [Defining the companion object](#defining-the-companion-object)
+  - [Safer ids](#safer-ids)
+- [Defining direct relationships](#defining-direct-relationships)
+  - [Direct 'to one' relationships](#direct-to-one-relationships)
+  - [Direct 'to many' relationships](#direct-to-many-relationships)
+- [Defining indirect relationships (many-to-many)](#defining-indirect-relationships-many-to-many)
+- [Querying an entity set](#querying-an-entity-set)
+  - [Retrieving entities](#retrieving-entities)
+  - [Retrieving non-entity results](#retrieving-non-entity-results)
+  - [Inserting a new entity](#inserting-a-new-entity)
+  - [Updating an entity](#updating-an-entity)
+  - [Deleting an entity](#deleting-an-entity)
+- [Navigating relationship values](#navigating-relationship-values)
+- [Avoiding runtime reflection](#avoiding-runtime-reflection)
+- [Play Framework](#play-framework)
+
 ## Artifact installation
 
+The Entitytled artifact is available on Sonatype's central repository and is
+cross-build for Scala 2.10 and Scala 2.11.
+
+To make SBT automatically use the correct build based on your project's Scala
+version, add the following to your build file:
+
+```sbt
+libraryDependencies += "com.github.rsschermer" %% "entitytled-core" % "0.3.0"
+```
+
+To use the 2.10 build explicitly add:
+
+```sbt
+libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.10" % "0.3.0"
+```
+
+To use the 2.11 build explicitly add:
+
+```sbt
+libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.11" % "0.3.0"
+```
 
 ## Defining an Entity type
 
@@ -96,6 +140,8 @@ You may also define your own profile for a driver that is not included in the
 standard distribution of Slick:
 
 ```scala
+package models.meta
+
 import entitytled.Entitytled
 import my.driver.MyDriver
 
@@ -109,11 +155,11 @@ object MyProfile extends MyProfile
 And use it like this:
 
 ```scala
-import entitytled.profile.MyProfile._
-import entitytled.profile.MyProfile.driver.simple._
+import models.meta.MyProfile._
+import models.meta.MyProfile.driver.simple._
 ```
 
-### Defining the Entity type case class
+### Defining the Entity type
 
 The second segment of interest in the Director example is the definition of 
 the `Director` case class:
@@ -146,7 +192,7 @@ type IdType = Long
 The `id` field then needs to be of type `Option[IdType]`, which in this case
 means it needs to be an `Option[Long]`.
 
-### Defining the EntityCompanion object
+### Defining the companion object
 
 Next the Director example defines a `Director` companion object for the
 `Director` case class: 
@@ -168,7 +214,7 @@ val query = TableQuery[Directors]
 This is a bit of boilerplate which will hopefully be made obsolete in the 
 future.
 
-### Defining the EntityTable type
+### Defining the table type
 
 The final part of the Director example concerns the definition of the
 `Directors` table:
@@ -196,7 +242,7 @@ def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
 
 Usually the `id` column is also the primary key of an entity table.
 
-### Safer id fields
+### Safer ids
 
 To keep this example simple, `IdType` was specified simply as `Long`. However,
 if we'd also have a `Producer` entity type, which also specified its `IdType`
@@ -535,7 +581,7 @@ object Star extends EntityCompanion[Stars, Star] {
 }
 
 class Stars(tag: Tag) extends EntityTable[Star](tag, "STARS") {
-  def id = column[StarID]("id", O.PrimaryKey, O.AutoInc)
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
 
   def * = (id.?, name) <> ((Star.apply _).tupled, Star.unapply)
@@ -545,7 +591,7 @@ class Stars(tag: Tag) extends EntityTable[Star](tag, "STARS") {
 There's nothing new going on here, it just defines the inverse relationship to
 complete the full many-to-many relationship.
 
-## Querying an Entity set
+## Querying an entity set
 
 The starting point for an entity query is the companion object for that entity,
 which wraps a number of Slick's operations and adds a couple on top. You can 
@@ -610,9 +656,9 @@ result set:
   ```
   
 These all function exactly like their unwrapped Slick versions. Entitytled adds
-one notably result modifying operation: `include`. `include` can be used for
-eager-loading relationships, one of Entitytled's key features. Eager-loading is 
-a way to solve the `n + 1` query problem:
+one notable result modifying operation: `include`. `include` can be used for
+eager-loading relationships. Eager-loading is a way to solve the `n + 1` query 
+problem:
 
 ```scala
 Movie.list.foreach { m => 
@@ -657,14 +703,15 @@ way you like:
 
 ```scala
 val oldestTenMaleDirectorsWithMovies = 
-  Director.filter(_.male === true)
-          .sortBy(_.age.asc)
-          .take(10)
-          .include(Director.movies)
-          .list
+  Director
+    .filter(_.male === true)
+    .sortBy(_.age.asc)
+    .take(10)
+    .include(Director.movies)
+    .list
 ```
 
-### Retrieving non-Entity results
+### Retrieving non-entity results
 
 In the previous section it was mentioned a couple of times that querying through
 the companion object happens via a wrapper around Slick queries. The reason for
@@ -685,7 +732,7 @@ val movieCount = Movie.query.length.run
 val oldDirectorNames = Director.filter(_.age >= 65).query.map(_.name).list
 ```
 
-### Inserting a new Entity
+### Inserting a new entity
 
 Persisting a new entity can be done with the `insert` method on the companion
 object, which takes the new entity as an argument:
@@ -696,7 +743,7 @@ val newStarId = Star.insert(Star(None, "Marlon Brando"))
 
 This will return the id of the newly inserted entity.
 
-### Updating an Entity
+### Updating an entity
 
 Updating a persisted entity is done with the `update` method on the companion 
 object, which takes the updated entity as an argument:
@@ -708,7 +755,7 @@ Director.update(martinScorsese.copy(age = 72))
 Only entity instances with an id (the id is not `None`) can be updated,
 otherwise an exception will be thrown.
 
-### Deleting an Entity
+### Deleting an entity
 
 Deleting a persisted entity is done with the `delete` method on the companion
 object, which takes the id of the entity to be deleted as an argument:
@@ -717,12 +764,123 @@ object, which takes the id of the entity to be deleted as an argument:
 Movie.delete(38)
 ```
 
-### Updating relationships
+## Navigating relationship values
 
-## Navigating relationships
+'To one' relationships (both direct and indirect) can be used as values of type
+`Option[RelatedType]`:
+
+```scala
+val director: Option[Director] = someMovie.director
+```
+
+'To many' relationships (both direct and indirect) can be used as values of type
+`Seq[RelatedType]`:
+
+```scala
+val stars: Seq[Star] = someMovie.stars
+```
+
+This is however achieved through implicit conversions. In reality, eager-loaded
+relationship values are wrapped in `OneFetched` or `ManyFetched` for 'to one' 
+and 'to many' relationships respectively; relationships that have not yet been 
+loaded are represented by `OneUnfetched` or `ManyUnfetched` for 'to one' and 
+'to many' relationships respectively. When implicitly converting fetched 
+relationship values, the wrapped value is used; when implicitly converting
+unfetched values, a query is executed to retrieve the value.
+
+Executing an additional query may not always be desirable. You can pattern
+match for a fetched value to make the decision to execute an additional query
+explicit:
+
+```scala
+someMovie.director match {
+  case OneFetched(relationship, value, ownerID) =>
+    println("The director was eager-loaded: ${value.name}!")
+  case _ =>
+    println("The director was not loaded yet...")
+}
+```
+
+Conversely, you may want to force the execution a new query to retrieve a fresh 
+value. This can be achieved by calling `fetchValue`:
+
+```scala
+someMovie.director.fetchValue
+```
+
+This will execute a new query regardless of whether the director relationship 
+was eager-loaded.
 
 ## Avoiding runtime reflection
 
-## Play framework
+Entitytled uses some runtime reflection to do eager-loading. Specifically the
+`withIncludes` method on an entity type, used for adding eager-loaded values to
+entity instances, is implemented through reflection. To avoid this reflection,
+override the `withIncludes` method with a hard-coded implementation in all your
+entity types that do eager-loading:
 
-## Examples
+```scala
+case class Director(
+    id: Option[Long],
+    name: String,
+    age: Int)(implicit includes: Includes[Director])
+  extends Entity[Director]
+{
+  type IdType = Long
+  
+  ...
+  
+  override def withIncludes(includes: Includes[Director]): Director =
+    this.copy()(includes)
+}
+```
+
+## Play Framework
+
+Entitytled does not yet provide specific integration with Play Framework.
+However, using it together with [play-slick](https://github.com/playframework/play-slick)
+is relatively straightforward. Add the a play-slick dependency to your build
+for a matching version of Slick:
+
+| Entitytled version | Slick version |
+| ------------------ | ------------- |
+| <= 0.3.x           | 2.1.x         |
+
+(The [play-slick readme](https://github.com/playframework/play-slick/blob/master/README.md#versioning)
+provides a table matching versions of the plugin to versions of Slick and 
+versions of Play.)
+
+Then define a profile as follows:
+
+```scala
+package models.meta
+
+import entitytled.Entitytled
+import play.api.db.slick.Config.{driver => PlayDriver}
+
+trait Profile extends Entitytled {
+  val driver = PlayDriver
+}
+
+object Profile extends Profile
+```
+
+And use it like this:
+
+```scala
+import models.meta.Profile._
+import models.meta.Profile.driver.simple._
+```
+
+This will make Entitytled use the Slick driver you've configured in your 
+Play config file.
+
+I was fortunately allowed the open-source my master thesis research project,
+for which Entitytled was originally created: [PIM-aid](https://github.com/RSSchermer/pim-aid).
+It's my first Play project and it was build within a limited time frame, so I 
+doubt it's a particularly good example of a Play application (feedback always 
+welcome, please open issues!), but it provides an example of the Play 
+integration described here, along with many of the other features described in 
+this guide. 
+
+(Simple Typesafe Activator example coming.)
