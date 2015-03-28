@@ -621,7 +621,7 @@ entity by its `id`:
 Director.find(158) // Option[Director]
 ```
 
-This will return a value of type `Option[Director]` (`Some(director)` if an
+This will return a value of type `Option[EntityType]` (`Some(entity)` if an
 entity with the given id was found, `None` otherwise).
 
 Entitytled also wraps a number of Slick operations that modify the current
@@ -655,10 +655,10 @@ result set:
   val allExceptTheFirstTenMovies = Movie.drop(10).list
   ```
   
-These all function exactly like their unwrapped Slick versions. Entitytled adds
-one notable result modifying operation: `include`. `include` can be used for
-eager-loading relationships. Eager-loading is a way to solve the `n + 1` query 
-problem:
+These all function exactly like their unwrapped Slick counterparts. Entitytled 
+adds one notable result modifying operation: `include`. `include` can be used 
+for eager-loading relationships. Eager-loading is a way to solve the `n + 1` 
+query problem:
 
 ```scala
 Movie.list.foreach { m => 
@@ -716,13 +716,13 @@ val oldestTenMaleDirectorsWithMovies =
 In the previous section it was mentioned a couple of times that querying through
 the companion object happens via a wrapper around Slick queries. The reason for
 this is that Entitytled needs to keep track of your eager-loads. The original 
-idea was to simple extend Slick queries, but this was abandoned because it did 
-not make sense conceptually: a Slick query represents a single query to the 
+idea was to simply extend Slick queries, but this was abandoned because it did 
+not make sense conceptually: a Slick query represents a single query on the 
 database and eager-loading might take several queries.
 
 You may have noticed however, that the operations exposed by the wrapper are
-somewhat limited. Slick exposes many more query operations: `length`, `map`,
-`exists`, etc. These are not exposed by the wrapper, because eager-loading only
+somewhat limited. Slick exposes many more query operations (`length`, `map`,
+`exists`, etc). These are not exposed by the wrapper, because eager-loading only
 makes sense for queries that return entity instances. For queries that don't
 return entity values you should just use normal Slick queries. You can retrieve
 the Slick query from the wrapper at any point by calling `query`:
@@ -795,7 +795,7 @@ explicit:
 ```scala
 someMovie.director match {
   case OneFetched(relationship, value, ownerID) =>
-    println("The director was eager-loaded: ${value.name}!")
+    println(s"The director was eager-loaded: ${value.name}!")
   case _ =>
     println("The director was not loaded yet...")
 }
@@ -813,7 +813,7 @@ was eager-loaded.
 
 ## Avoiding runtime reflection
 
-Entitytled uses some runtime reflection to do eager-loading. Specifically the
+Entitytled uses some runtime reflection to do eager-loading. Specifically, the
 `withIncludes` method on an entity type, used for adding eager-loaded values to
 entity instances, is implemented through reflection. To avoid this reflection,
 override the `withIncludes` method with a hard-coded implementation in all your
@@ -839,8 +839,8 @@ case class Director(
 
 Entitytled does not yet provide specific integration with Play Framework.
 However, using it together with [play-slick](https://github.com/playframework/play-slick)
-is relatively straightforward. Add the a play-slick dependency to your build
-for a matching version of Slick:
+is relatively straightforward. Add a play-slick dependency to your build for a 
+matching version of Slick:
 
 | Entitytled version | Slick version |
 | ------------------ | ------------- |
@@ -856,7 +856,7 @@ Then define a profile as follows:
 package models.meta
 
 import entitytled.Entitytled
-import play.api.db.slick.Config.{driver => PlayDriver}
+import play.api.db.slick.Config.{ driver => PlayDriver }
 
 trait Profile extends Entitytled {
   val driver = PlayDriver
