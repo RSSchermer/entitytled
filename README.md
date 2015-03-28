@@ -875,12 +875,12 @@ import models.meta.Profile.driver.simple._
 This will make Entitytled use the Slick driver you've configured in your 
 Play config file.
 
-I was fortunately allowed the open-source my master thesis research project,
-for which Entitytled was originally created: [PIM-aid](https://github.com/RSSchermer/pim-aid).
-It's my first Play project and it was build within a limited time frame, so I 
-doubt it's a particularly good example of a Play application (feedback always 
-welcome, please open issues!), but it provides an example of the Play 
-integration described here, along with many of the other features described in 
-this guide. 
+I was fortunately allowed the open-source my 
+[master thesis research project](https://github.com/RSSchermer/pim-aid), for 
+which Entitytled was originally created. It's my first Play project and it was 
+build within a limited time frame, so I doubt it's a particularly good example 
+of a Play application (feedback always welcome, please open issues!), but it 
+provides an example of the Play integration described here, along with many of 
+the other features described in this guide. 
 
 (Simple Typesafe Activator example coming.)
