@@ -225,7 +225,7 @@ class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
 
-  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
+  def * = (id.?, name, age) <> ((Director.apply _).tupled, Director.unapply)
 }
 ```
 
@@ -271,7 +271,7 @@ And our `Directors` table definition:
 
 ```scala
 class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
-  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+  def id = column[DirectorID]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
 
@@ -300,7 +300,7 @@ case class Movie(
     directorID: Long)(implicit includes: Includes[Movie])
   extends Entity[Movie]
 {
-  type IdType = MovieID
+  type IdType = Long
 
   val director = one(Movie.director)
 }
@@ -314,7 +314,7 @@ object Movie extends EntityCompanion[Movies, Movie] {
 }
 
 class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
-  def id = column[MovieID]("id", O.PrimaryKey, O.AutoInc)
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def title = column[String]("title", O.NotNull)
   def directorID = column[DirectorID]("director_id", O.NotNull)
 
@@ -421,7 +421,7 @@ class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
 
-  def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
+  def * = (id.?, name, age) <> ((Director.apply _).tupled, Director.unapply)
 }
 ```
 
@@ -502,7 +502,7 @@ case class Movie(
     title: String)(implicit includes: Includes[Movie])
   extends Entity[Movie]
 {
-  type IdType = MovieID
+  type IdType = Long
   
   val stars = many(Movie.stars)
 }
@@ -516,7 +516,7 @@ object Movie extends EntityCompanion[Movies, Movie] {
 }
 
 class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
-  def id = column[MovieID]("id", O.PrimaryKey, O.AutoInc)
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def title = column[String]("title", O.NotNull)
 
   def * = (id.?, title) <> ((Movie.apply _).tupled, Movie.unapply)
