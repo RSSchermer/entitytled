@@ -45,7 +45,7 @@ class EntityBuilderSpec extends FunSpec with Matchers {
       val stars = Star.include(Star.movies).list
 
       it("should have fetched the movies for each star listed") {
-        forAll (stars) { star => star.movies shouldBe a [ManyFetched[_, _]] }
+        forAll (stars) { star => star.movies shouldBe a [ManyFetched[_, _, _]] }
       }
 
       it("should have fetched The Usual Suspects for Kevin Spacey") {
@@ -60,11 +60,11 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         val stars = Star.include(Star.movies.include(Movie.director)).list
 
         it("should have fetched the movies for each star listed") {
-          forAll (stars) { star => star.movies shouldBe a [ManyFetched[_, _]] }
+          forAll (stars) { star => star.movies shouldBe a [ManyFetched[_, _, _]] }
         }
 
         it("should have fetched the directors for each movie") {
-          forAll (stars.flatMap(_.movies.getValue)) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+          forAll (stars.flatMap(_.movies.getValue)) { movie => movie.director shouldBe a [OneFetched[_, _, _]] }
         }
 
         it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
@@ -78,11 +78,11 @@ class EntityBuilderSpec extends FunSpec with Matchers {
       val movies = Movie.include(Movie.director, Movie.stars).list
 
       it("should have fetched the stars for each movie listed") {
-        forAll (movies) { movie => movie.stars shouldBe a [ManyFetched[_, _]] }
+        forAll (movies) { movie => movie.stars shouldBe a [ManyFetched[_, _, _]] }
       }
 
       it("should have fetched the director for each movie listed") {
-        forAll (movies) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+        forAll (movies) { movie => movie.director shouldBe a [OneFetched[_, _, _]] }
       }
 
       it("should have fetched Kevin Spacey for The Usual Suspects") {
@@ -177,7 +177,7 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         val spacey = Star.include(Star.movies).find(spaceyID).get
 
         it("should have fetched the movies for Kevin Spacey") {
-          spacey.movies shouldBe a [ManyFetched[_, _]]
+          spacey.movies shouldBe a [ManyFetched[_, _, _]]
         }
 
         it("should have fetched The Usual Suspects") {
@@ -188,11 +188,11 @@ class EntityBuilderSpec extends FunSpec with Matchers {
           val spacey = Star.include(Star.movies.include(Movie.director)).find(spaceyID).get
 
           it("should have fetched the movies for Kevin Spacey") {
-            spacey.movies shouldBe a [ManyFetched[_, _]]
+            spacey.movies shouldBe a [ManyFetched[_, _, _]]
           }
 
           it("should have fetched the directors for each movie") {
-            forAll (spacey.movies.getValue) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+            forAll (spacey.movies.getValue) { movie => movie.director shouldBe a [OneFetched[_, _, _]] }
           }
 
           it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
@@ -215,11 +215,11 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         val suspects = Movie.include(Movie.director, Movie.stars).find(usualSuspectsID).get
 
         it("should have fetched the stars for each movie listed") {
-          suspects.stars shouldBe a [ManyFetched[_, _]]
+          suspects.stars shouldBe a [ManyFetched[_, _, _]]
         }
 
         it("should have fetched the director for each movie listed") {
-          suspects.director shouldBe a [OneFetched[_, _]]
+          suspects.director shouldBe a [OneFetched[_, _, _]]
         }
 
         it("should have fetched Kevin Spacey for The Usual Suspects") {

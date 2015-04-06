@@ -5,9 +5,9 @@ trait RelationshipRepConversionsComponent {
 
   import driver.simple._
 
-  implicit def oneRepToValue[E <: Entity[E], T](rep: One[E, T])(implicit s: Session): Option[T] =
+  implicit def oneRepToValue[E <: Entity[E, I], I, T](rep: One[E, I, T])(implicit s: Session): Option[T] =
     rep.getOrFetchValue
 
-  implicit def manyRepToValue[E <: Entity[E], T](rep: Many[E, T])(implicit s: Session): Seq[T] =
+  implicit def manyRepToValue[E <: Entity[E, I], I, T](rep: Many[E, I, T])(implicit s: Session): Seq[T] =
     rep.getOrFetchValue
 }

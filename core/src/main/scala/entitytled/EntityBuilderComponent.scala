@@ -8,7 +8,7 @@ trait EntityBuilderComponent {
   import driver.simple._
 
   /** Used to build a collection of entities along with possible includables. */
-  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E], E <: Entity[E]]
+  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I]
   {
     /** The base query representing the collection of entities. */
     val query: Query[T, E, Seq]
@@ -18,27 +18,27 @@ trait EntityBuilderComponent {
 
     /** Narrows the query to only those entities that satisfy the predicate. */
     def filter[C <: Column[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C]) = {
-      new EntityCollectionBuilder[T, E](query.filter(f), includes)
+      new EntityCollectionBuilder[T, E, I](query.filter(f), includes)
     }
 
     /** Narrows the query to only those entities that do not satisfy the
       * predicate. */
     def filterNot[C <: Column[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C]) = {
-      new EntityCollectionBuilder[T, E](query.filterNot(f), includes)
+      new EntityCollectionBuilder[T, E, I](query.filterNot(f), includes)
     }
 
     /** Sort this query according to a function which extracts the ordering
       * criteria from the entities. */
     def sortBy[C](f: (T) => C)(implicit arg0: (C) ⇒ Ordered) =
-      new EntityCollectionBuilder[T, E](query.sortBy(f), includes)
+      new EntityCollectionBuilder[T, E, I](query.sortBy(f), includes)
 
     /** Select the first `num` elements. */
     def take(num: Int) =
-      new EntityCollectionBuilder[T, E](query.take(num), includes)
+      new EntityCollectionBuilder[T, E, I](query.take(num), includes)
 
     /** Select all elements except the first `num` ones. */
     def drop(num: Int) =
-      new EntityCollectionBuilder[T, E](query.drop(num), includes)
+      new EntityCollectionBuilder[T, E, I](query.drop(num), includes)
 
     /** Return the first entity of the result set wrapped in Some, or None if
       * the result set is empty. */
@@ -56,7 +56,7 @@ trait EntityBuilderComponent {
 
     /** Returns the entity with the given ID wrapped in Some, or None if
       * no such entity exists. */
-    def find(id: E#IdType)(implicit session: Session, ev: BaseColumnType[E#IdType]): Option[E] =
+    def find(id: I)(implicit session: Session, ev: BaseColumnType[I]): Option[E] =
       query.filter(_.id === id).firstOption match {
         case Some(instance) =>
           Some(includes.foldLeft(instance)((i, s) => s.includeOn(i, query)))
@@ -65,11 +65,11 @@ trait EntityBuilderComponent {
 
     /** Include includables on the entities in the result set. */
     def include(include: Includable[T, E]*) =
-      new EntityCollectionBuilder[T, E](query, includes ++ include)
+      new EntityCollectionBuilder[T, E, I](query, includes ++ include)
   }
 
-  class EntityCollectionBuilder[T <: EntityTable[E], E <: Entity[E]](
+  class EntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
       val query: Query[T, E, Seq],
       override val includes: List[Includable[T, E]])
-    extends AbstractEntityCollectionBuilder[T, E]
+    extends AbstractEntityCollectionBuilder[T, E, I]
 }

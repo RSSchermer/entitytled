@@ -84,16 +84,13 @@ case class Director(
     id: Option[Long],
     name: String,
     age: Int)
-  extends Entity[Director]
-{
-  type IdType = Long
-}
+  extends Entity[Director, Long]
 
-object Director extends EntityCompanion[Directors, Director] {
+object Director extends EntityCompanion[Directors, Director, Long] {
   val query = TableQuery[Directors]
 }
 
-class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+class Directors(tag: Tag) extends EntityTable[Director, Long](tag, "DIRECTORS") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
@@ -169,24 +166,14 @@ case class Director(
     id: Option[Long],
     name: String,
     age: Int)
-  extends Entity[Director]
-{
-  type IdType = Long
-}
+  extends Entity[Director, Long]
 ```
 
-The `Director` case class extends the `Entity` base class, which takes the
-`Director` type itself as a type parameter (a self bound):
+The `Director` case class extends the `Entity` base class, which takes 2 type
+parameters: the `Director` type itself (a self bound), and the type of its id:
 
 ```scala
-extends Entity[Director]
-```
-
-An entity type also has to define an `id` field and the type of this id field.
-Currently the type of the id has to specified in the class body:
-
-```scala
-type IdType = Long
+extends Entity[Director, Long]
 ```
 
 The `id` field then needs to be of type `Option[IdType]`, which in this case
@@ -198,29 +185,30 @@ Next the Director example defines a `Director` companion object for the
 `Director` case class: 
 
 ```scala
-object Director extends EntityCompanion[Directors, Director] {
+object Director extends EntityCompanion[Directors, Director, Long] {
   val query = TableQuery[Directors]
 }
 ```
 
 This companion object will be our entry point for querying and persisting 
 directors. It extends `EntityCompanion` which takes the table type `Directors`
-and the entity type `Director` as type parameters. It also has to define a
-`query` field:
+and the entity type `Director`, and the id type `Long` as type parameters. It 
+also has to define a `query` field:
 
 ```scala
 val query = TableQuery[Directors]
 ```
+
 This is a bit of boilerplate which will hopefully be made obsolete in the 
 future.
 
 ### Defining the table type
 
-The final part of the Director example concerns the definition of the
+The final part of the Director example consists of the definition of the
 `Directors` table:
 
 ```scala
-class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+class Directors(tag: Tag) extends EntityTable[Director, Long](tag, "DIRECTORS") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
@@ -232,9 +220,9 @@ class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
 Table definition is essentially the same as it is in Slick and you can find
 more details in [Slick's documentation on the subject](http://slick.typesafe.com/doc/2.1.0/schemas.html).
 Instead of extending a regular `Table`, a table definition for an entity needs
-to extend the `EntityTable` base class. The `EntityTable` base class requires
-that you at least define an `id` method that returns a value of type 
-`Column[IdType]`:
+to extend the `EntityTable` base class. The `EntityTable` base class takes two 
+type parameters, the entity type and the id type, and requires that you at least 
+define an `id` method that returns a value of type `Column[IdType]`:
 
 ```scala
 def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
@@ -244,33 +232,32 @@ Usually the `id` column is also the primary key of an entity table.
 
 ### Safer ids
 
-To keep this example simple, `IdType` was specified simply as `Long`. However,
-if we'd also have a `Producer` entity type, which also specified its `IdType`
-as a simple `Long`, we could be at risk of mixing up our director ids with our
-producer ids. Slick also supports using more precise types that wrap a primitive 
-type. We could make use of this to make our `id` field a bit safer:
+To keep this example simple, the id type was specified simply as `Long`. 
+However, if we'd also have a `Producer` entity type, which also specified its id
+type as a simple `Long`, we could be at risk of mixing up our director ids with 
+our producer ids. Slick also supports using more precise types that wrap a 
+primitive type. We could make use of this to make our `id` field a bit safer:
 
 ```scala
 case class DirectorID(value: Long) extends MappedTo[Long]
 ```
 
-We'd then have to update our `Director` case class definition as follows:
+We'd then have to update our `Director` entity definition as follows:
 
 ```scala
 case class Director(
     id: Option[DirectorID],
     name: String,
     age: Int)
-  extends Entity[Director]
-{
-  type IdType = DirectorID
+  extends Entity[Director, DirectorID]
+
+object Director extends EntityCompanion[Directors, Director, DirectorID] {
+  val query = TableQuery[Directors]
 }
-```
 
-And our `Directors` table definition:
-
-```scala
-class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+class Directors(tag: Tag) 
+  extends EntityTable[Director, DirectorID](tag, "DIRECTORS") 
+{
   def id = column[DirectorID]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
@@ -280,7 +267,7 @@ class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
 ```
 
 The [Holywood example used for testing](test/src/test/scala/entitytled/holywood)
-also uses this safer way for handling ids.
+also uses this safer way of handling ids.
 
 ## Defining direct relationships
 
@@ -298,14 +285,12 @@ case class Movie(
     id: Option[Long],
     title: String,
     directorID: Long)(implicit includes: Includes[Movie])
-  extends Entity[Movie]
+  extends Entity[Movie, Long]
 {
-  type IdType = Long
-
   val director = one(Movie.director)
 }
 
-object Movie extends EntityCompanion[Movies, Movie] {
+object Movie extends EntityCompanion[Movies, Movie, Long] {
   val query = TableQuery[Movies]
 
   val director = toOne[Directors, Director](
@@ -313,10 +298,10 @@ object Movie extends EntityCompanion[Movies, Movie] {
     joinCondition = _.directorID === _.id)
 }
 
-class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
+class Movies(tag: Tag) extends EntityTable[Movie, Long](tag, "MOVIES") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def title = column[String]("title", O.NotNull)
-  def directorID = column[DirectorID]("director_id", O.NotNull)
+  def directorID = column[Long]("director_id", O.NotNull)
 
   def * = (id.?, title, directorID) <> ((Movie.apply _).tupled, Movie.unapply)
 
@@ -401,14 +386,12 @@ case class Director(
     id: Option[Long],
     name: String,
     age: Int)(implicit includes: Includes[Director])
-  extends Entity[Director]
+  extends Entity[Director, Long]
 {
-  type IdType = Long
-  
   val movies = many(Director.movies)
 }
 
-object Director extends EntityCompanion[Directors, Director] {
+object Director extends EntityCompanion[Directors, Director, Long] {
   val query = TableQuery[Directors]
   
   val movies = toMany[Movies, Movie](
@@ -416,7 +399,7 @@ object Director extends EntityCompanion[Directors, Director] {
     joinCondition = _.id === _.directorID)
 }
 
-class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+class Directors(tag: Tag) extends EntityTable[Director, Long](tag, "DIRECTORS") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
@@ -500,14 +483,12 @@ Now for the `Movie` type:
 case class Movie(
     id: Option[Long],
     title: String)(implicit includes: Includes[Movie])
-  extends Entity[Movie]
+  extends Entity[Movie, Long]
 {
-  type IdType = Long
-  
   val stars = many(Movie.stars)
 }
 
-object Movie extends EntityCompanion[Movies, Movie] {
+object Movie extends EntityCompanion[Movies, Movie, Long] {
   val query = TableQuery[Movies]
   
   val stars = toManyThrough[Stars, MoviesStars, Star](
@@ -515,7 +496,7 @@ object Movie extends EntityCompanion[Movies, Movie] {
     joinCondition = _.id === _._1.movieID)
 }
 
-class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
+class Movies(tag: Tag) extends EntityTable[Movie, Long](tag, "MOVIES") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def title = column[String]("title", O.NotNull)
 
@@ -565,14 +546,12 @@ To complete the example, here's the definition of the `Star` type:
 case class Star(
     id: Option[Long],
     name: String)(implicit includes: Includes[Star])
-  extends Entity[Star]
+  extends Entity[Star, Long]
 {
-  type IdType = Long
-
   val movies = many(Star.movies)
 }
 
-object Star extends EntityCompanion[Stars, Star] {
+object Star extends EntityCompanion[Stars, Star, Long] {
   val query = TableQuery[Stars]
 
   val movies = toManyThrough[Movies, MoviesStars, Movie](
@@ -580,7 +559,7 @@ object Star extends EntityCompanion[Stars, Star] {
     joinCondition = _.id === _._1.starID)
 }
 
-class Stars(tag: Tag) extends EntityTable[Star](tag, "STARS") {
+class Stars(tag: Tag) extends EntityTable[Star, Long](tag, "STARS") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
 
@@ -824,12 +803,8 @@ case class Director(
     id: Option[Long],
     name: String,
     age: Int)(implicit includes: Includes[Director])
-  extends Entity[Director]
+  extends Entity[Director, Long]
 {
-  type IdType = Long
-  
-  ...
-  
   override def withIncludes(includes: Includes[Director]): Director =
     this.copy()(includes)
 }

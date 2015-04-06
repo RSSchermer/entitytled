@@ -9,14 +9,12 @@ case class Star(
     id: Option[StarID],
     name: String,
     age: Int)(implicit includes: Includes[Star])
-  extends Entity[Star]
+  extends Entity[Star, StarID]
 {
-  type IdType = StarID
-
   val movies = many(Star.movies)
 }
 
-object Star extends EntityCompanion[Stars, Star] {
+object Star extends EntityCompanion[Stars, Star, StarID] {
   val query = TableQuery[Stars]
 
   val movies = toManyThrough[Movies, MoviesStars, Movie](

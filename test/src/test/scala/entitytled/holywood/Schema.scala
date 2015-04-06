@@ -3,14 +3,14 @@ package entitytled.holywood
 import entitytled.profile.H2Profile._
 import entitytled.profile.H2Profile.driver.simple._
 
-class Directors(tag: Tag) extends EntityTable[Director](tag, "DIRECTORS") {
+class Directors(tag: Tag) extends EntityTable[Director, DirectorID](tag, "DIRECTORS") {
   def id = column[DirectorID]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
 
   def * = (id.?, name) <> ((Director.apply _).tupled, Director.unapply)
 }
 
-class Movies(tag: Tag) extends EntityTable[Movie](tag, "MOVIES") {
+class Movies(tag: Tag) extends EntityTable[Movie, MovieID](tag, "MOVIES") {
   def id = column[MovieID]("id", O.PrimaryKey, O.AutoInc)
   def title = column[String]("title", O.NotNull)
   def directorID = column[DirectorID]("director_id", O.NotNull)
@@ -31,7 +31,7 @@ class MoviesStars(tag: Tag) extends Table[(MovieID, StarID)](tag, "MOVIES_STARS"
   def star = foreignKey("MOVIES_STARS_STAR_FK", starID, TableQuery[Stars])(_.id)
 }
 
-class Stars(tag: Tag) extends EntityTable[Star](tag, "STARS") {
+class Stars(tag: Tag) extends EntityTable[Star, StarID](tag, "STARS") {
   def id = column[StarID]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)

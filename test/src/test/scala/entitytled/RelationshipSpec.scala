@@ -95,7 +95,7 @@ class RelationshipSpec extends FunSpec with Matchers {
         val movies = Star.movies.include(Movie.director).fetchFor(spaceyID)
 
         it("should have fetched a director for all movies") {
-          forAll (movies) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+          forAll (movies) { movie => movie.director shouldBe a [OneFetched[_, _, _]] }
         }
 
         it("should have fetched Bryan Singer for The Usual Suspects") {

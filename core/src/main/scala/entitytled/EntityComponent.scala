@@ -7,13 +7,11 @@ trait EntityComponent {
   
   import driver.simple._
 
-  type Includes[E <: Entity[E]] = Map[Relationship[_ <: EntityTable[E], _ <: Table[_], E, _, _], Any]
+  type Includes[E <: Entity[E, _]] = Map[Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, _, _], Any]
   
   /** Base class for entities. Entities need to be uniquely identifiable by an ID. */
-  abstract class Entity[E <: Entity[E]](implicit val includes: Includes[E]) {
-    type IdType
-
-    val id: Option[IdType]
+  abstract class Entity[E <: Entity[E, I], I](implicit val includes: Includes[E]) {
+    val id: Option[I]
 
     def withIncludes(includes: Includes[E]): E = {
       val m = ru.runtimeMirror(getClass.getClassLoader)
@@ -32,39 +30,39 @@ trait EntityComponent {
       copyMirror(args: _*).asInstanceOf[E]
     }
 
-    def setInclude[T, V](relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, V], value: V): E =
+    def setInclude[T, V](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, V], value: V): E =
       withIncludes(includes + (relationship -> value))
 
-    def setInclude[T, V](relationshipRep: RelationshipRep[E, T, V] with Fetched[V]): E =
+    def setInclude[T, V](relationshipRep: RelationshipRep[E, I, T, V] with Fetched[V]): E =
       setInclude(relationshipRep.relationship, relationshipRep.value)
 
-    def one[T](relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Option[T]]): One[E, T] =
+    def one[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option[T]]): One[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
-          OneFetched[E, T](relationship, value.asInstanceOf[Option[T]], id.asInstanceOf[Option[E#IdType]])
+          OneFetched[E, I, T](relationship, value.asInstanceOf[Option[T]], id.asInstanceOf[Option[I]])
         case _ =>
-          OneUnfetched[E, T](relationship, id.asInstanceOf[Option[E#IdType]])
+          OneUnfetched[E, I, T](relationship, id.asInstanceOf[Option[I]])
       }
 
-    def many[T](relationship: Relationship[_ <: EntityTable[E], _ <: Table[T], E, T, Seq[T]]): Many[E, T] =
+    def many[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq[T]]): Many[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
-          ManyFetched[E, T](relationship, value.asInstanceOf[Seq[T]], id.asInstanceOf[Option[E#IdType]])
+          ManyFetched[E, I, T](relationship, value.asInstanceOf[Seq[T]], id.asInstanceOf[Option[I]])
         case _ =>
-          ManyUnfetched[E, T](relationship, id.asInstanceOf[Option[E#IdType]])
+          ManyUnfetched[E, I, T](relationship, id.asInstanceOf[Option[I]])
       }
   }
 
   /** Base class for entity tables */
-  abstract class EntityTable[E <: Entity[E]](
+  abstract class EntityTable[E <: Entity[E, I], I](
       tag: Tag,
       schemaName: Option[String],
-      tableName: String)(implicit val colType: BaseColumnType[E#IdType])
+      tableName: String)(implicit val colType: BaseColumnType[I])
     extends Table[E](tag, schemaName, tableName)
   {
-    def this(tag: Tag, tableName: String)(implicit mapping: BaseColumnType[E#IdType]) =
+    def this(tag: Tag, tableName: String)(implicit mapping: BaseColumnType[I]) =
       this(tag, None, tableName)
 
-    def id: Column[E#IdType]
+    def id: Column[I]
   }
 }

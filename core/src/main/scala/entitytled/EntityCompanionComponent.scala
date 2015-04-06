@@ -11,8 +11,8 @@ trait EntityCompanionComponent {
   import driver.simple._
 
   /** Trait for entity companion objects. */
-  abstract class EntityCompanion[T <: EntityTable[E], E <: Entity[E]](implicit ev: BaseColumnType[E#IdType])
-    extends EntityRepository[T, E]
+  abstract class EntityCompanion[T <: EntityTable[E, I], E <: Entity[E, I], I](implicit ev: BaseColumnType[I])
+    extends EntityRepository[T, E, I]
   {
     implicit val defaultIncludes: Includes[E] = Map()
 
@@ -22,28 +22,28 @@ trait EntityCompanionComponent {
     protected def toOne[To <: Table[M], M](
       toQuery: Query[To, M, Seq],
       joinCondition: (T, To) => Column[Boolean]
-    ): ToOne[T, To, E, M] =
-      new ToOne[T, To, E, M](query, toQuery, joinCondition)
+    ): ToOne[T, To, E, I, M] =
+      new ToOne[T, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new direct (without a join-table) 'to many' relationship */
     protected def toMany[To <: Table[M], M](
       toQuery: Query[To, M, Seq],
       joinCondition: (T, To) => Column[Boolean]
-    ): ToMany[T, To, E, M] =
-      new ToMany[T, To, E, M](query, toQuery, joinCondition)
+    ): ToMany[T, To, E, I, M] =
+      new ToMany[T, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to one' relationship */
     protected def toOneThrough[To <: Table[M], Through <: Table[_], M](
       toQuery: Query[(Through, To), _ <: (_, M), Seq],
       joinCondition: (T, (Through, To)) => Column[Boolean]
-    ): ToOneThrough[T, Through, To, E, M] =
-      new ToOneThrough[T, Through, To, E, M](query, toQuery, joinCondition)
+    ): ToOneThrough[T, Through, To, E, I, M] =
+      new ToOneThrough[T, Through, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to many' relationship */
     protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
       toQuery: Query[(Through, To), _ <: (_, M), Seq],
       joinCondition: (T, (Through, To)) => Column[Boolean]
-    ): ToManyThrough[T, Through, To, E, M] =
-      new ToManyThrough[T, Through, To, E, M](query, toQuery, joinCondition)
+    ): ToManyThrough[T, Through, To, E, I, M] =
+      new ToManyThrough[T, Through, To, E, I, M](query, toQuery, joinCondition)
   }
 }

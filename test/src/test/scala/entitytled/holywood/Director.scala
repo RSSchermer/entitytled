@@ -8,14 +8,12 @@ case class DirectorID(value: Long) extends MappedTo[Long]
 case class Director(
     id: Option[DirectorID],
     name: String)(implicit includes: Includes[Director])
-  extends Entity[Director]
+  extends Entity[Director, DirectorID]
 {
-  type IdType = DirectorID
-
   val movies = many(Director.movies)
 }
 
-object Director extends EntityCompanion[Directors, Director] {
+object Director extends EntityCompanion[Directors, Director, DirectorID] {
   val query = TableQuery[Directors]
 
   val movies = toMany[Movies, Movie](
