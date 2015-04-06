@@ -51,19 +51,19 @@ To make SBT automatically use the correct build based on your project's Scala
 version, add the following to your build file:
 
 ```sbt
-libraryDependencies += "com.github.rsschermer" %% "entitytled-core" % "0.3.0"
+libraryDependencies += "com.github.rsschermer" %% "entitytled-core" % "0.4.0"
 ```
 
 To use the 2.10 build explicitly add:
 
 ```sbt
-libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.10" % "0.3.0"
+libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.10" % "0.4.0"
 ```
 
 To use the 2.11 build explicitly add:
 
 ```sbt
-libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.11" % "0.3.0"
+libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.11" % "0.4.0"
 ```
 
 ## Defining an Entity type
@@ -817,7 +817,7 @@ matching version of Slick:
 
 | Entitytled version | Slick version |
 | ------------------ | ------------- |
-| <= 0.3.x           | 2.1.x         |
+| <= 0.4.x           | 2.1.x         |
 
 (The [play-slick readme](https://github.com/playframework/play-slick/blob/master/README.md#versioning)
 provides a table matching versions of the plugin to versions of Slick and 
