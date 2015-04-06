@@ -169,7 +169,7 @@ case class Director(
   extends Entity[Director, Long]
 ```
 
-The `Director` case class extends the `Entity` base class, which takes 2 type
+The `Director` case class extends the `Entity` base class, which takes two type
 parameters: the `Director` type itself (a self bound), and the type of its id:
 
 ```scala
@@ -177,7 +177,7 @@ extends Entity[Director, Long]
 ```
 
 The `id` field then needs to be of type `Option[IdType]`, which in this case
-means it needs to be an `Option[Long]`.
+means it needs to be of type `Option[Long]`.
 
 ### Defining the companion object
 
@@ -255,9 +255,7 @@ object Director extends EntityCompanion[Directors, Director, DirectorID] {
   val query = TableQuery[Directors]
 }
 
-class Directors(tag: Tag) 
-  extends EntityTable[Director, DirectorID](tag, "DIRECTORS") 
-{
+class Directors(tag: Tag) extends EntityTable[Director, DirectorID](tag, "DIRECTORS") {
   def id = column[DirectorID]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name", O.NotNull)
   def age = column[Int]("age", O.NotNull)
