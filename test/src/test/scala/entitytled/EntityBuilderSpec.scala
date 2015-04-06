@@ -41,7 +41,7 @@ class EntityBuilderSpec extends FunSpec with Matchers {
       }
     }
 
-    describe("stars with movie side-loading") {
+    describe("stars with movie eager-loading") {
       val stars = Star.include(Star.movies).list
 
       it("should have fetched the movies for each star listed") {
@@ -56,7 +56,7 @@ class EntityBuilderSpec extends FunSpec with Matchers {
         stars.find(_.name == "Robert De Niro").get.movies.getValue.map(_.title) should not contain "The Usual Suspects"
       }
 
-      describe("with nested director side-loading") {
+      describe("with nested director eager-loading") {
         val stars = Star.include(Star.movies.include(Movie.director)).list
 
         it("should have fetched the movies for each star listed") {
@@ -74,7 +74,7 @@ class EntityBuilderSpec extends FunSpec with Matchers {
       }
     }
 
-    describe("movies with director and star side-loading") {
+    describe("movies with director and star eager-loading") {
       val movies = Movie.include(Movie.director, Movie.stars).list
 
       it("should have fetched the stars for each movie listed") {
@@ -167,16 +167,14 @@ class EntityBuilderSpec extends FunSpec with Matchers {
     }
 
     describe("query for Kevin Spacey by ID") {
-      val spaceyQuery = Star.one(spaceyID)
-      val spacey = spaceyQuery.get
+      val spacey = Star.find(spaceyID).get
 
       it("should have returned Kevin Spacey") {
-        spacey.get.name should be ("Kevin Spacey")
+        spacey.name should be ("Kevin Spacey")
       }
 
-      describe("with movie side-loading") {
-        val withMovies = spaceyQuery.include(Star.movies)
-        val spacey = withMovies.get.get
+      describe("with movie eager-loading") {
+        val spacey = Star.include(Star.movies).find(spaceyID).get
 
         it("should have fetched the movies for Kevin Spacey") {
           spacey.movies shouldBe a [ManyFetched[_, _]]
@@ -186,35 +184,35 @@ class EntityBuilderSpec extends FunSpec with Matchers {
           spacey.movies.getValue.map(_.title) should contain ("The Usual Suspects")
         }
 
-        describe("with nested director side-loading") {
-          val spaceyWithDirectors = spaceyQuery.include(Star.movies.include(Movie.director)).get.get
+        describe("with nested director eager-loading") {
+          val spacey = Star.include(Star.movies.include(Movie.director)).find(spaceyID).get
 
           it("should have fetched the movies for Kevin Spacey") {
-            spaceyWithDirectors.movies shouldBe a [ManyFetched[_, _]]
+            spacey.movies shouldBe a [ManyFetched[_, _]]
           }
 
           it("should have fetched the directors for each movie") {
-            forAll (spaceyWithDirectors.movies.getValue) { movie => movie.director shouldBe a [OneFetched[_, _]] }
+            forAll (spacey.movies.getValue) { movie => movie.director shouldBe a [OneFetched[_, _]] }
           }
 
           it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
-            spaceyWithDirectors.movies.getValue.find(_.title == "The Usual Suspects").get
-              .director.getValue.get.name should be ("Bryan Singer")
+            val usualSuspects = spacey.movies.getValue.find(_.title == "The Usual Suspects").get
+
+            usualSuspects.director.getValue.get.name should be ("Bryan Singer")
           }
         }
       }
     }
 
     describe("query for The Usual Suspects by ID") {
-      val suspectsQuery = Movie.one(usualSuspectsID)
-      val suspects = suspectsQuery.get.get
+      val suspects = Movie.find(usualSuspectsID).get
 
       it("should have returned The Usual suspects") {
         suspects.title should be ("The Usual Suspects")
       }
 
-      describe("The Usual Suspects with director and star side-loading") {
-        val suspects = suspectsQuery.include(Movie.director, Movie.stars).get.get
+      describe("The Usual Suspects with director and star eager-loading") {
+        val suspects = Movie.include(Movie.director, Movie.stars).find(usualSuspectsID).get
 
         it("should have fetched the stars for each movie listed") {
           suspects.stars shouldBe a [ManyFetched[_, _]]

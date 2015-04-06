@@ -5,25 +5,25 @@ trait RelationshipComponent {
 
   import driver.simple._
 
-  /** Implement this trade to allow side-loading */
-  trait SideLoadable[T <: Table[M], M] {
+  /** Implement this trade to allow including */
+  trait Includable[T <: Table[M], M] {
 
-    /** Side-load the side-loadable on a list of instances.
+    /** Include the includable on a list of instances.
       *
-      * Side-load the side-loadable on the given list of instances. The given
+      * Include the includable on the given list of instances. The given
       * query must retrieve this same list of instances. */
-    def sideLoadOn(instances: List[M], query: Query[T, M, Seq])(implicit session: Session): List[M]
+    def includeOn(instances: List[M], query: Query[T, M, Seq])(implicit session: Session): List[M]
 
-    /** Side-load the side-loadable on a single instance.
+    /** Include the includable on a single instance.
       *
-      * Side-load the side-loadable on the given instance. The given
+      * Include the includable on the given instance. The given
       * query must retrieve this same instance. */
-    def sideLoadOn(instance: M, query: Query[T, M, Seq])(implicit session: Session): M
+    def includeOn(instance: M, query: Query[T, M, Seq])(implicit session: Session): M
   }
 
   /** Represents a relationship between an owner entity and an owned relation. */
   trait Relationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T, Value]
-    extends SideLoadable[From, E]
+    extends Includable[From, E]
   {
     /** Returns a query for the owned relation for the owner entity with the
       * given id. */
@@ -35,10 +35,10 @@ trait RelationshipComponent {
     /** Fetches the owned relation for the given owner entity. */
     def fetchFor(instance: E)(implicit session: Session): Value
 
-    /** Include side-loadables for the owned relation. */
-    def include(sideLoad: SideLoadable[To, T]*): Relationship[From, To, E, T, Value]
+    /** Include includables for the owned relation. */
+    def include(includables: Includable[To, T]*): Relationship[From, To, E, T, Value]
 
-    private[RelationshipComponent] def sideLoadQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq]
+    private[RelationshipComponent] def includeQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq]
   }
 
   /** Base class for direct relationships (without a join-table). */
@@ -61,7 +61,7 @@ trait RelationshipComponent {
     def queryFor(id: E#IdType): Query[To, T, Seq] =
       fromQuery.filter(_.id === id).innerJoin(toQuery).on(joinCondition).map(_._2)
 
-    private[RelationshipComponent] def sideLoadQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
+    private[RelationshipComponent] def includeQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
       query.innerJoin(toQuery).on(joinCondition)
   }
 
@@ -85,7 +85,7 @@ trait RelationshipComponent {
     def queryFor(id: E#IdType): Query[To, T, Seq] =
       fromQuery.filter(_.id === id).innerJoin(toQuery).on(joinCondition).map(_._2._2)
 
-    private[RelationshipComponent] def sideLoadQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
+    private[RelationshipComponent] def includeQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
       query.innerJoin(toQuery).on(joinCondition).map(x => (x._1, x._2._2))
   }
 
@@ -101,20 +101,20 @@ trait RelationshipComponent {
       case _ => None
     }
 
-    def include(sideLoad: SideLoadable[To, T]*): OneSideLoading[From, To, E, T] =
-      new OneSideLoading(this, sideLoad)
+    def include(includables: Includable[To, T]*): OneIncluding[From, To, E, T] =
+      new OneIncluding(this, includables)
 
-    def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
-      val map = buildSideLoadMap(query)
+    def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
+      val map = buildIncludeMap(query)
 
       instances.map(i => i.setInclude(this, map.getOrElse(i, None)))
     }
 
-    def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      instance.setInclude(this, buildSideLoadMap(query).getOrElse(instance, None))
+    def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
+      instance.setInclude(this, buildIncludeMap(query).getOrElse(instance, None))
 
-    private[RelationshipComponent] def buildSideLoadMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Option[T]] =
-      sideLoadQuery(query).list.groupBy(_._1).map(x => (x._1, x._2.map(_._2).headOption))
+    private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Option[T]] =
+      includeQuery(query).list.groupBy(_._1).map(x => (x._1, x._2.map(_._2).headOption))
   }
 
   /** Implements relationship interface for 'to many' relationships. */
@@ -129,20 +129,20 @@ trait RelationshipComponent {
       case _ => List()
     }
 
-    def include(sideLoad: SideLoadable[To, T]*): ManySideLoading[From, To, E, T] =
-      new ManySideLoading(this, sideLoad)
+    def include(includables: Includable[To, T]*): ManyIncluding[From, To, E, T] =
+      new ManyIncluding(this, includables)
 
-    def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
-      val map = buildSideLoadMap(query)
+    def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
+      val map = buildIncludeMap(query)
 
       instances.map(i => i.setInclude(this, map.getOrElse(i, List())))
     }
 
-    def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      instance.setInclude(this, buildSideLoadMap(query).getOrElse(instance, List()))
+    def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
+      instance.setInclude(this, buildIncludeMap(query).getOrElse(instance, List()))
 
-    private[RelationshipComponent] def buildSideLoadMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Seq[T]] =
-      sideLoadQuery(query).list.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))
+    private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Seq[T]] =
+      includeQuery(query).list.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))
   }
 
   /** Represents a direct (without a join-table) 'to one' relationship. */
@@ -177,83 +177,84 @@ trait RelationshipComponent {
     extends ThroughRelationship[From, Through, To, E, T, Seq[T]]
     with ToManyRelationship[From, To, E, T]
 
-  abstract class SideLoadingRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T, Value](
+  abstract class IncludingRelationship[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T, Value](
       val relationship: Relationship[From, To, E, T, Value])
     extends Relationship[From, To, E, T, Value]
   {
     def queryFor(id: E#IdType): Query[To, T, Seq] =
       relationship.queryFor(id)
 
-    private[RelationshipComponent] def sideLoadQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
-      relationship.sideLoadQuery(query)
+    private[RelationshipComponent] def includeQuery(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
+      relationship.includeQuery(query)
   }
 
-  /** Wraps 'to one' relationships for side-loading one or more side-loadables. */
-  class OneSideLoading[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
+  /** Wraps 'to one' relationships for including one or more includables. */
+  class OneIncluding[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
       override val relationship: Relationship[From, To, E, T, Option[T]] with ToOneRelationship[From, To, E, T],
-      val sideLoads: Seq[SideLoadable[To, T]])
-    extends SideLoadingRelationship[From, To, E, T, Option[T]](relationship)
+      val includes: Seq[Includable[To, T]])
+    extends IncludingRelationship[From, To, E, T, Option[T]](relationship)
     with ToOneRelationship[From, To, E, T]
   {
     override def fetchFor(id: E#IdType)(implicit session: Session): Option[T] =
       relationship.fetchFor(id) match {
         case Some(instance) =>
           val toQuery = relationship.queryFor(id)
-          Some(sideLoads.foldLeft(instance)((i, s) => s.sideLoadOn(i, toQuery)))
+          Some(includes.foldLeft(instance)((i, s) => s.includeOn(i, toQuery)))
         case _ => None
       }
 
-    override def include(sideLoad: SideLoadable[To, T]*): OneSideLoading[From, To, E, T] =
-      new OneSideLoading(relationship, sideLoads ++ sideLoad)
+    override def include(includables: Includable[To, T]*): OneIncluding[From, To, E, T] =
+      new OneIncluding(relationship, includes ++ includables)
 
-    override def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
-      val map = buildSideLoadMap(query)
+    override def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
+      val map = buildIncludeMap(query)
 
       instances.map(i => i.setInclude(relationship, map.getOrElse(i, None)))
     }
 
-    override def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      instance.setInclude(relationship, buildSideLoadMap(query).getOrElse(instance, None))
+    override def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
+      instance.setInclude(relationship, buildIncludeMap(query).getOrElse(instance, None))
 
-    override private[RelationshipComponent] def buildSideLoadMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Option[T]] = {
-      val toQuery = sideLoadQuery(query).map(_._2)
-      relationship.buildSideLoadMap(query)
+    override private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Option[T]] = {
+      val toQuery = includeQuery(query).map(_._2)
+      relationship.buildIncludeMap(query)
         .map({
           case (e, Some(t)) =>
-            (e, Some(sideLoads.foldLeft(t)((i, s) => s.sideLoadOn(i, toQuery))))
+            (e, Some(includes.foldLeft(t)((i, s) => s.includeOn(i, toQuery))))
           case x@_ => x
         })
     }
   }
 
-  /** Wraps 'to many' relationships for side-loading one or more side-loadables. */
-  class ManySideLoading[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
+  /** Wraps 'to many' relationships for including one or more includables. */
+  class ManyIncluding[From <: EntityTable[E], To <: Table[T], E <: Entity[E], T](
       override val relationship: Relationship[From, To, E, T, Seq[T]] with ToManyRelationship[From, To, E, T],
-      val sideLoads: Seq[SideLoadable[To, T]])
-    extends SideLoadingRelationship[From, To, E, T, Seq[T]](relationship)
+      val includes: Seq[Includable[To, T]])
+    extends IncludingRelationship[From, To, E, T, Seq[T]](relationship)
     with ToManyRelationship[From, To, E, T]
   {
     override def fetchFor(id: E#IdType)(implicit session: Session): Seq[T] = {
       val toQuery = relationship.queryFor(id)
-      sideLoads.foldLeft(relationship.fetchFor(id).toList)((i, s) => s.sideLoadOn(i, toQuery))
+      
+      includes.foldLeft(relationship.fetchFor(id).toList)((i, s) => s.includeOn(i, toQuery))
     }
 
-    override def include(sideLoad: SideLoadable[To, T]*): ManySideLoading[From, To, E, T] =
-      new ManySideLoading(relationship, sideLoads ++ sideLoad)
+    override def include(includables: Includable[To, T]*): ManyIncluding[From, To, E, T] =
+      new ManyIncluding(relationship, includes ++ includables)
 
-    override def sideLoadOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
-      val map = buildSideLoadMap(query)
+    override def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
+      val map = buildIncludeMap(query)
 
       instances.map(i => i.setInclude(relationship, map.getOrElse(i, List())))
     }
 
-    override def sideLoadOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      instance.setInclude(relationship, buildSideLoadMap(query).getOrElse(instance, List()))
+    override def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
+      instance.setInclude(relationship, buildIncludeMap(query).getOrElse(instance, List()))
 
-    override private[RelationshipComponent] def buildSideLoadMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Seq[T]] = {
-      val toQuery = sideLoadQuery(query).map(_._2)
-      relationship.buildSideLoadMap(query)
-        .map(x => (x._1, sideLoads.foldLeft(x._2)((i, s) => s.sideLoadOn(i.toList, toQuery))))
+    override private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Seq[T]] = {
+      val toQuery = includeQuery(query).map(_._2)
+      relationship.buildIncludeMap(query)
+        .map(x => (x._1, includes.foldLeft(x._2)((i, s) => s.includeOn(i.toList, toQuery))))
     }
   }
 }

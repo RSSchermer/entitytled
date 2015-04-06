@@ -90,7 +90,7 @@ class RelationshipSpec extends FunSpec with Matchers {
       }
     }
 
-    describe("with side-loading") {
+    describe("with eager-loading") {
       describe("Kevin Spacey's movies with directors") {
         val movies = Star.movies.include(Movie.director).fetchFor(spaceyID)
 
