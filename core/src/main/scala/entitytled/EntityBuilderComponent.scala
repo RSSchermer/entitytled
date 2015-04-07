@@ -8,7 +8,7 @@ trait EntityBuilderComponent {
   import driver.simple._
 
   /** Used to build a collection of entities along with possible includables. */
-  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I]
+  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](implicit ev: BaseColumnType[I])
   {
     /** The base query representing the collection of entities. */
     val query: Query[T, E, Seq]
@@ -56,7 +56,7 @@ trait EntityBuilderComponent {
 
     /** Returns the entity with the given ID wrapped in Some, or None if
       * no such entity exists. */
-    def find(id: I)(implicit session: Session, ev: BaseColumnType[I]): Option[E] =
+    def find(id: I)(implicit session: Session): Option[E] =
       query.filter(_.id === id).firstOption match {
         case Some(instance) =>
           Some(includes.foldLeft(instance)((i, s) => s.includeOn(i, query)))
@@ -70,6 +70,6 @@ trait EntityBuilderComponent {
 
   class EntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
       val query: Query[T, E, Seq],
-      override val includes: List[Includable[T, E]])
+      override val includes: List[Includable[T, E]])(implicit ev: BaseColumnType[I])
     extends AbstractEntityCollectionBuilder[T, E, I]
 }
