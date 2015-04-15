@@ -17,7 +17,9 @@ trait EntityComponent {
     def withIncludes(includes: Includes[E]): E =
       includesSetter.withIncludes(this.asInstanceOf[E], includes)
 
-    def setInclude[T, V](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, V], value: V): E =
+    def setInclude[T, V](
+        relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, V],
+        value: V): E =
       withIncludes(includes + (relationship -> value))
 
     def setInclude[T, V](relationshipRep: RelationshipRep[E, I, T, V] with Fetched[V]): E =
@@ -71,8 +73,10 @@ object MaterializeIncludesSetterImpl {
 
     c.Expr(q"""
     new IncludesSetter[$tpe] {
-      def withIncludes(instance: $tpe, includes: Includes[$tpe]): $tpe =
-        instance.copy()(includes)
+      def withIncludes(instance: $tpe, includes: Includes[$tpe]): $tpe = {
+        implicit val i = includes
+        instance.copy()
+      }
     }""")
   }
 }
