@@ -22,28 +22,28 @@ trait EntityCompanionComponent {
     protected def toOne[To <: Table[M], M](
       toQuery: Query[To, M, Seq],
       joinCondition: (T, To) => Column[Boolean]
-    ): ToOne[T, To, E, I, M] =
+    )(implicit includesSetter: IncludesSetter[E]): ToOne[T, To, E, I, M] =
       new ToOne[T, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new direct (without a join-table) 'to many' relationship */
     protected def toMany[To <: Table[M], M](
       toQuery: Query[To, M, Seq],
       joinCondition: (T, To) => Column[Boolean]
-    ): ToMany[T, To, E, I, M] =
+    )(implicit includesSetter: IncludesSetter[E]): ToMany[T, To, E, I, M] =
       new ToMany[T, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to one' relationship */
     protected def toOneThrough[To <: Table[M], Through <: Table[_], M](
       toQuery: Query[(Through, To), _ <: (_, M), Seq],
       joinCondition: (T, (Through, To)) => Column[Boolean]
-    ): ToOneThrough[T, Through, To, E, I, M] =
+    )(implicit includesSetter: IncludesSetter[E]): ToOneThrough[T, Through, To, E, I, M] =
       new ToOneThrough[T, Through, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to many' relationship */
     protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
       toQuery: Query[(Through, To), _ <: (_, M), Seq],
       joinCondition: (T, (Through, To)) => Column[Boolean]
-    ): ToManyThrough[T, Through, To, E, I, M] =
+    )(implicit includesSetter: IncludesSetter[E]): ToManyThrough[T, Through, To, E, I, M] =
       new ToManyThrough[T, Through, To, E, I, M](query, toQuery, joinCondition)
   }
 }

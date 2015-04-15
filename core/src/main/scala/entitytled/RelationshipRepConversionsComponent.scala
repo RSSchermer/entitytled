@@ -1,5 +1,7 @@
 package entitytled
 
+import scala.language.implicitConversions
+
 trait RelationshipRepConversionsComponent {
   self: RelationshipRepComponent with EntityComponent with DriverComponent =>
 
