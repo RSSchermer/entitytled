@@ -39,7 +39,6 @@ may help to [have a look at the tests](test/src/test/scala/entitytled).
   - [Updating an entity](#updating-an-entity)
   - [Deleting an entity](#deleting-an-entity)
 - [Navigating relationship values](#navigating-relationship-values)
-- [Avoiding runtime reflection](#avoiding-runtime-reflection)
 - [Play Framework](#play-framework)
   - [Activator Template](#activator-template)
   - [Real world example](#real-world-example)
@@ -789,26 +788,6 @@ someMovie.director.fetchValue
 
 This will execute a new query regardless of whether the director relationship 
 was eager-loaded.
-
-## Avoiding runtime reflection
-
-Entitytled uses some runtime reflection to do eager-loading. Specifically, the
-`withIncludes` method on an entity type, used for adding eager-loaded values to
-entity instances, is implemented through reflection. To avoid this reflection,
-override the `withIncludes` method with a hard-coded implementation in all your
-entity types that do eager-loading:
-
-```scala
-case class Director(
-    id: Option[Long],
-    name: String,
-    age: Int)(implicit includes: Includes[Director])
-  extends Entity[Director, Long]
-{
-  override def withIncludes(includes: Includes[Director]): Director =
-    this.copy()(includes)
-}
-```
 
 ## Play Framework
 
