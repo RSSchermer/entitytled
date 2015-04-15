@@ -93,8 +93,6 @@ trait RelationshipComponent {
   trait ToOneRelationship[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T] {
     self: Relationship[From, To, E, I, T, Option[T]] =>
 
-    val includesSetter: IncludesSetter[E]
-
     def fetchFor(id: I)(implicit session: Session): Option[T] =
       queryFor(id).firstOption
 
@@ -104,16 +102,16 @@ trait RelationshipComponent {
     }
 
     def include(includables: Includable[To, T]*): OneIncluding[From, To, E, I, T] =
-      new OneIncluding(this, includables)(includesSetter)
+      new OneIncluding(this, includables)
 
     def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
       val map = buildIncludeMap(query)
 
-      instances.map(i => includesSetter.withIncludes(i, i.includes + (this -> map.getOrElse(i, None))))
+      instances.map(i => i.setInclude(this, map.getOrElse(i, None)))
     }
 
     def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      includesSetter.withIncludes(instance, instance.includes + (this -> buildIncludeMap(query).getOrElse(instance, None)))
+      instance.setInclude(this, buildIncludeMap(query).getOrElse(instance, None))
 
     private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Option[T]] =
       includeQuery(query).list.groupBy(_._1).map(x => (x._1, x._2.map(_._2).headOption))
@@ -122,8 +120,6 @@ trait RelationshipComponent {
   /** Implements relationship interface for 'to many' relationships. */
   trait ToManyRelationship[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T] {
     self: Relationship[From, To, E, I, T, Seq[T]] =>
-
-    val includesSetter: IncludesSetter[E]
 
     def fetchFor(id: I)(implicit session: Session): Seq[T] =
       queryFor(id).list
@@ -134,16 +130,16 @@ trait RelationshipComponent {
     }
 
     def include(includables: Includable[To, T]*): ManyIncluding[From, To, E, I, T] =
-      new ManyIncluding(this, includables)(includesSetter)
+      new ManyIncluding(this, includables)
 
     def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
       val map = buildIncludeMap(query)
 
-      instances.map(i => includesSetter.withIncludes(i, i.includes + (this -> map.getOrElse(i, List()))))
+      instances.map(i => i.setInclude(this, map.getOrElse(i, List())))
     }
 
     def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      includesSetter.withIncludes(instance, instance.includes + (this -> buildIncludeMap(query).getOrElse(instance, List())))
+      instance.setInclude(this, buildIncludeMap(query).getOrElse(instance, List()))
 
     private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Seq[T]] =
       includeQuery(query).list.groupBy(_._1).map(x => (x._1, x._2.map(_._2)))
@@ -153,9 +149,7 @@ trait RelationshipComponent {
   class ToOne[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[To, T, Seq],
-      val joinCondition: (From, To) => Column[Boolean])(
-    implicit mapping: BaseColumnType[I],
-             val includesSetter: IncludesSetter[E])
+      val joinCondition: (From, To) => Column[Boolean])(implicit mapping: BaseColumnType[I])
     extends DirectRelationship[From, To, E, I, T, Option[T]]
     with ToOneRelationship[From, To, E, I, T]
 
@@ -163,9 +157,7 @@ trait RelationshipComponent {
   class ToMany[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[To, T, Seq],
-      val joinCondition: (From, To) => Column[Boolean])(
-    implicit mapping: BaseColumnType[I],
-             val includesSetter: IncludesSetter[E])
+      val joinCondition: (From, To) => Column[Boolean])(implicit mapping: BaseColumnType[I])
     extends DirectRelationship[From, To, E, I, T, Seq[T]]
     with ToManyRelationship[From, To, E, I, T]
 
@@ -173,9 +165,7 @@ trait RelationshipComponent {
   class ToOneThrough[From <: EntityTable[E, I], Through <: Table[_], To <: Table[T], E <: Entity[E, I], I, T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[(Through, To), _ <: (_, T), Seq],
-      val joinCondition: (From, (Through, To)) => Column[Boolean])(
-    implicit mapping: BaseColumnType[I],
-             val includesSetter: IncludesSetter[E])
+      val joinCondition: (From, (Through, To)) => Column[Boolean])(implicit mapping: BaseColumnType[I])
     extends ThroughRelationship[From, Through, To, E, I, T, Option[T]]
     with ToOneRelationship[From, To, E, I, T]
 
@@ -183,9 +173,7 @@ trait RelationshipComponent {
   class ToManyThrough[From <: EntityTable[E, I], Through <: Table[_], To <: Table[T], E <: Entity[E, I], I, T](
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[(Through, To), _ <: (_, T), Seq],
-      val joinCondition: (From, (Through, To)) => Column[Boolean])(
-    implicit mapping: BaseColumnType[I],
-             val includesSetter: IncludesSetter[E])
+      val joinCondition: (From, (Through, To)) => Column[Boolean])(implicit mapping: BaseColumnType[I])
     extends ThroughRelationship[From, Through, To, E, I, T, Seq[T]]
     with ToManyRelationship[From, To, E, I, T]
 
@@ -203,7 +191,7 @@ trait RelationshipComponent {
   /** Wraps 'to one' relationships for including one or more includables. */
   class OneIncluding[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
       override val relationship: Relationship[From, To, E, I, T, Option[T]] with ToOneRelationship[From, To, E, I, T],
-      val includes: Seq[Includable[To, T]])(implicit val includesSetter: IncludesSetter[E])
+      val includes: Seq[Includable[To, T]])
     extends IncludingRelationship[From, To, E, I, T, Option[T]](relationship)
     with ToOneRelationship[From, To, E, I, T]
   {
@@ -216,16 +204,16 @@ trait RelationshipComponent {
       }
 
     override def include(includables: Includable[To, T]*): OneIncluding[From, To, E, I, T] =
-      new OneIncluding(relationship, includes ++ includables)(includesSetter)
+      new OneIncluding(relationship, includes ++ includables)
 
     override def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
       val map = buildIncludeMap(query)
 
-      instances.map(i => includesSetter.withIncludes(i, i.includes + (relationship -> map.getOrElse(i, None))))
+      instances.map(i => i.setInclude(relationship, map.getOrElse(i, None)))
     }
 
     override def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      includesSetter.withIncludes(instance, instance.includes + (relationship -> buildIncludeMap(query).getOrElse(instance, None)))
+      instance.setInclude(relationship, buildIncludeMap(query).getOrElse(instance, None))
 
     override private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Option[T]] = {
       val toQuery = includeQuery(query).map(_._2)
@@ -241,7 +229,7 @@ trait RelationshipComponent {
   /** Wraps 'to many' relationships for including one or more includables. */
   class ManyIncluding[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
       override val relationship: Relationship[From, To, E, I, T, Seq[T]] with ToManyRelationship[From, To, E, I, T],
-      val includes: Seq[Includable[To, T]])(implicit val includesSetter: IncludesSetter[E])
+      val includes: Seq[Includable[To, T]])
     extends IncludingRelationship[From, To, E, I, T, Seq[T]](relationship)
     with ToManyRelationship[From, To, E, I, T]
   {
@@ -252,16 +240,16 @@ trait RelationshipComponent {
     }
 
     override def include(includables: Includable[To, T]*): ManyIncluding[From, To, E, I, T] =
-      new ManyIncluding(relationship, includes ++ includables)(includesSetter)
+      new ManyIncluding(relationship, includes ++ includables)
 
     override def includeOn(instances: List[E], query: Query[From, E, Seq])(implicit session: Session): List[E] = {
       val map = buildIncludeMap(query)
 
-      instances.map(i => includesSetter.withIncludes(i, i.includes + (relationship -> map.getOrElse(i, List()))))
+      instances.map(i => i.setInclude(relationship, map.getOrElse(i, List())))
     }
 
     override def includeOn(instance: E, query: Query[From, E, Seq])(implicit session: Session): E =
-      includesSetter.withIncludes(instance, instance.includes + (relationship -> buildIncludeMap(query).getOrElse(instance, List())))
+      instance.setInclude(relationship, buildIncludeMap(query).getOrElse(instance, List()))
 
     override private[RelationshipComponent] def buildIncludeMap(query: Query[From, E, Seq])(implicit session: Session): Map[E, Seq[T]] = {
       val toQuery = includeQuery(query).map(_._2)

@@ -11,8 +11,17 @@ trait EntityComponent {
   type Includes[E <: Entity[E, _]] = Map[Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, _, _], Any]
 
   /** Base class for entities. Entities need to be uniquely identifiable by an ID. */
-  abstract class Entity[E <: Entity[E, I], I](implicit val includes: Includes[E]) {
+  abstract class Entity[E <: Entity[E, I], I](implicit val includes: Includes[E], includesSetter: IncludesSetter[E]) {
     val id: Option[I]
+
+    def withIncludes(includes: Includes[E]): E =
+      includesSetter.withIncludes(this.asInstanceOf[E], includes)
+
+    def setInclude[T, V](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, V], value: V): E =
+      withIncludes(includes + (relationship -> value))
+
+    def setInclude[T, V](relationshipRep: RelationshipRep[E, I, T, V] with Fetched[V]): E =
+      setInclude(relationshipRep.relationship, relationshipRep.value)
 
     def one[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option[T]]): One[E, I, T] =
       includes.get(relationship) match {
