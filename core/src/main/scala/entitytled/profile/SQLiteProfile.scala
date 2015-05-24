@@ -1,7 +1,7 @@
 package entitytled.profile
 
 import entitytled.Entitytled
-import scala.slick.driver.SQLiteDriver
+import slick.driver.SQLiteDriver
 
 trait SQLiteProfile extends Entitytled {
   val driver: SQLiteDriver = SQLiteDriver

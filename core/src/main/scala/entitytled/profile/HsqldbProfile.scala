@@ -1,7 +1,7 @@
 package entitytled.profile
 
 import entitytled.Entitytled
-import scala.slick.driver.HsqldbDriver
+import slick.driver.HsqldbDriver
 
 trait HsqldbProfile extends Entitytled {
   val driver: HsqldbDriver = HsqldbDriver

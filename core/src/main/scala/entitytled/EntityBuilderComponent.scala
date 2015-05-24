@@ -1,75 +1,90 @@
 package entitytled
 
-import scala.slick.lifted.{CanBeQueryCondition, Ordered}
+import scala.concurrent.ExecutionContext
+import scala.language.higherKinds
+import slick.lifted.{CanBeQueryCondition, Ordered}
 
 trait EntityBuilderComponent {
   self: DriverComponent with EntityComponent with RelationshipComponent =>
 
-  import driver.simple._
+  import driver.api._
+
+  trait EntityResultBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I, C[_]] {
+    val query: Query[T, E, Seq]
+
+    val includes: List[Includable[T, _ <: Table[_], E, _]]
+
+    def include(include: Includable[T, _ <: Table[_], E, _]*): EntityResultBuilder[T, E, I, C]
+
+    def result(implicit ec: ExecutionContext): DBIOAction[C[E], NoStream, Effect.Read]
+  }
 
   /** Used to build a collection of entities along with possible includables. */
-  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](implicit ev: BaseColumnType[I])
-  {
+  abstract class AbstractEntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I]
+  (implicit ev: BaseColumnType[I]) extends EntityResultBuilder[T, E, I, Seq] {
+
     /** The base query representing the collection of entities. */
     val query: Query[T, E, Seq]
 
     /** The includables that should be included with the resulting entities. */
-    val includes: List[Includable[T, E]] = List()
+    val includes: List[Includable[T, _ <: Table[_], E, _]] = List()
+
+    def all: AbstractEntityCollectionBuilder[T, E, I] = this
+
+    def one(id: I): EntityInstanceBuilder[T, E, I] =
+      new EntityInstanceBuilder(query.filter(_.id === id), includes)
 
     /** Narrows the query to only those entities that satisfy the predicate. */
-    def filter[C <: Column[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C]) = {
-      new EntityCollectionBuilder[T, E, I](query.filter(f), includes)
+    def filter[C <: Rep[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C])
+    : AbstractEntityCollectionBuilder[T, E, I] = {
+      new EntityCollectionBuilder(query.filter(f), includes)
     }
 
     /** Narrows the query to only those entities that do not satisfy the
       * predicate. */
-    def filterNot[C <: Column[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C]) = {
-      new EntityCollectionBuilder[T, E, I](query.filterNot(f), includes)
+    def filterNot[C <: Rep[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C])
+    : AbstractEntityCollectionBuilder[T, E, I] = {
+      new EntityCollectionBuilder(query.filterNot(f), includes)
     }
 
     /** Sort this query according to a function which extracts the ordering
       * criteria from the entities. */
-    def sortBy[C](f: (T) => C)(implicit arg0: (C) ⇒ Ordered) =
-      new EntityCollectionBuilder[T, E, I](query.sortBy(f), includes)
+    def sortBy[C](f: (T) => C)(implicit arg0: (C) ⇒ Ordered)
+    : AbstractEntityCollectionBuilder[T, E, I] =
+      new EntityCollectionBuilder(query.sortBy(f), includes)
 
     /** Select the first `num` elements. */
-    def take(num: Int) =
-      new EntityCollectionBuilder[T, E, I](query.take(num), includes)
+    def take(num: Int): AbstractEntityCollectionBuilder[T, E, I] =
+      new EntityCollectionBuilder(query.take(num), includes)
 
     /** Select all elements except the first `num` ones. */
-    def drop(num: Int) =
-      new EntityCollectionBuilder[T, E, I](query.drop(num), includes)
-
-    /** Return the first entity of the result set wrapped in Some, or None if
-      * the result set is empty. */
-    def firstOption()(implicit session: Session): Option[E] = query.firstOption match {
-      case Some(instance) =>
-        Some(includes.foldLeft(instance)((i, s) => s.includeOn(i, query)))
-      case _ => None
-    }
-
-    /** Returns a list of the entities in the result set. */
-    def list()(implicit session: Session): Seq[E] = {
-      val instances = query.list
-      includes.foldLeft(instances)((i, s) => s.includeOn(i, query))
-    }
-
-    /** Returns the entity with the given ID wrapped in Some, or None if
-      * no such entity exists. */
-    def find(id: I)(implicit session: Session): Option[E] =
-      query.filter(_.id === id).firstOption match {
-        case Some(instance) =>
-          Some(includes.foldLeft(instance)((i, s) => s.includeOn(i, query)))
-        case _ => None
-      }
+    def drop(num: Int): AbstractEntityCollectionBuilder[T, E, I] =
+      new EntityCollectionBuilder(query.drop(num), includes)
 
     /** Include includables on the entities in the result set. */
-    def include(include: Includable[T, E]*) =
-      new EntityCollectionBuilder[T, E, I](query, includes ++ include)
+    def include(include: Includable[T, _ <: Table[_], E, _]*)
+    : AbstractEntityCollectionBuilder[T, E, I] =
+      new EntityCollectionBuilder(query, includes ++ include)
+
+    def result(implicit ec: ExecutionContext): DBIOAction[Seq[E], NoStream, Effect.Read] =
+      includes.foldLeft(query.result.map(x => x))((a, i) => i.includeOnSeq(a, query))
   }
 
   class EntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
       val query: Query[T, E, Seq],
-      override val includes: List[Includable[T, E]])(implicit ev: BaseColumnType[I])
+      override val includes: List[Includable[T, _ <: Table[_], E, _]])(implicit ev: BaseColumnType[I])
     extends AbstractEntityCollectionBuilder[T, E, I]
+
+  class EntityInstanceBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
+      val query: Query[T, E, Seq],
+      val includes: List[Includable[T, _ <: Table[_], E, _]])(implicit ev: BaseColumnType[I])
+    extends EntityResultBuilder[T, E, I, Option]
+  {
+    /** Include includables on the entity instance. */
+    def include(include: Includable[T, _ <: Table[_], E, _]*): EntityInstanceBuilder[T, E, I] =
+      new EntityInstanceBuilder(query, includes ++ include)
+
+    def result(implicit ec: ExecutionContext): DBIOAction[Option[E], NoStream, Effect.Read] =
+      includes.foldLeft(query.result.headOption.map(x => x))((a, i) => i.includeOnOption(a, query))
+  }
 }

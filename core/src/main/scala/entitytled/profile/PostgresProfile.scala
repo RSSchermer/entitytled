@@ -1,7 +1,7 @@
 package entitytled.profile
 
 import entitytled.Entitytled
-import scala.slick.driver.PostgresDriver
+import slick.driver.PostgresDriver
 
 trait PostgresProfile extends Entitytled {
   val driver: PostgresDriver = PostgresDriver

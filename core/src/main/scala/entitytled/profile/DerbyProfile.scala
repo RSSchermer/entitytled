@@ -1,7 +1,7 @@
 package entitytled.profile
 
 import entitytled.Entitytled
-import scala.slick.driver.DerbyDriver
+import slick.driver.DerbyDriver
 
 trait DerbyProfile extends Entitytled {
   val driver: DerbyDriver = DerbyDriver

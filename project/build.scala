@@ -7,14 +7,15 @@ import org.typelevel.sbt.TypelevelPlugin._
 object BuildSettings {
   import EntitytledPublishing._
 
-  val buildScalaVersion = "2.11.5"
+  val buildScalaVersion = "2.11.6"
 
   val buildSettings = typelevelDefaultSettings ++ Seq(
     organization       := "com.github.rsschermer",
     scalaVersion       := buildScalaVersion,
-    crossScalaVersions := Seq("2.10.4", "2.11.5"),
+    crossScalaVersions := Seq("2.10.4", "2.11.6"),
     scalacOptions      ++= Seq(
       "-feature",
+      "-deprecation",
       "-Xlog-reflective-calls"
     ),
     resolvers          += Resolver.sonatypeRepo("releases"),
@@ -23,7 +24,8 @@ object BuildSettings {
 }
 
 object Dependencies {
-  val slick         = "com.typesafe.slick"  %%  "slick"           % "2.1.0"
+  val slick         = "com.typesafe.slick"  %%  "slick"           % "3.0.0"
+  val scalaz        = "org.scalaz"          %% "scalaz-core"      % "7.1.2"
   val scalaTest     = "org.scalatest"       %%  "scalatest"       % "2.2.1"     % "test"
   val h2database    = "com.h2database"      %   "h2"              % "1.4.181"   % "test"
   val logback       = "ch.qos.logback"      %   "logback-classic" % "0.9.28"    % "test"
@@ -44,7 +46,7 @@ object EntitytledBuild extends Build {
     "entitytled-core",
     file("core"),
     settings = buildSettings ++ Seq(
-      libraryDependencies ++= Seq(slick, "org.scala-lang" % "scala-reflect" % scalaVersion.value),
+      libraryDependencies ++= Seq(slick, scalaz, "org.scala-lang" % "scala-reflect" % scalaVersion.value),
       libraryDependencies := {
         CrossVersion.partialVersion(scalaVersion.value) match {
           // if scala 2.11+ is used, quasiquotes are merged into scala-reflect

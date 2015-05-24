@@ -1,14 +1,18 @@
 package entitytled
 
 import scala.language.experimental.macros
+import scala.language.higherKinds
+import scala.language.existentials
+
 import scala.reflect.macros._
 
 trait EntityComponent {
   self: DriverComponent with RelationshipComponent with RelationshipRepComponent =>
   
-  import driver.simple._
+  import driver.api._
 
-  type Includes[E <: Entity[E, _]] = Map[Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, _, _], Any]
+  // TODO: replace with custom Set implementation
+  type Includes[E <: Entity[E, _]] = Map[Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, _, C] forSome { type C[_] }, Any]
 
   /** Base class for entities. Entities need to be uniquely identifiable by an ID. */
   abstract class Entity[E <: Entity[E, I], I](implicit val includes: Includes[E], includesSetter: IncludesSetter[E]) {
@@ -17,15 +21,15 @@ trait EntityComponent {
     def withIncludes(includes: Includes[E]): E =
       includesSetter.withIncludes(this.asInstanceOf[E], includes)
 
-    def setInclude[T, V](
-        relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, V],
-        value: V): E =
+    def setInclude[T, C[_]](
+        relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, C],
+        value: C[T]): E =
       withIncludes(includes + (relationship -> value))
 
-    def setInclude[T, V](relationshipRep: RelationshipRep[E, I, T, V] with Fetched[V]): E =
+    def setInclude[T, C[_]](relationshipRep: RelationshipRep[E, I, T, C] with Fetched[T, C]): E =
       setInclude(relationshipRep.relationship, relationshipRep.value)
 
-    def one[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option[T]]): One[E, I, T] =
+    def one[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option]): One[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
           OneFetched[E, I, T](relationship, value.asInstanceOf[Option[T]], id.asInstanceOf[Option[I]])
@@ -33,7 +37,7 @@ trait EntityComponent {
           OneUnfetched[E, I, T](relationship, id.asInstanceOf[Option[I]])
       }
 
-    def many[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq[T]]): Many[E, I, T] =
+    def many[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq]): Many[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
           ManyFetched[E, I, T](relationship, value.asInstanceOf[Seq[T]], id.asInstanceOf[Option[I]])
@@ -61,7 +65,7 @@ trait EntityComponent {
     def this(tag: Tag, tableName: String)(implicit mapping: BaseColumnType[I]) =
       this(tag, None, tableName)
 
-    def id: Column[I]
+    def id: Rep[I]
   }
 }
 
