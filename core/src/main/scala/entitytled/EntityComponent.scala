@@ -11,7 +11,7 @@ trait EntityComponent {
   
   import driver.api._
 
-  // TODO: replace with custom Set implementation
+  // TODO: replace with custom Map implementation and get rid of all asInstanceOf calls
   type Includes[E <: Entity[E, _]] = Map[Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, _, C] forSome { type C[_] }, Any]
 
   /** Base class for entities. Entities need to be uniquely identifiable by an ID. */
@@ -24,7 +24,7 @@ trait EntityComponent {
     def setInclude[T, C[_]](
         relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, C],
         value: C[T]): E =
-      withIncludes(includes + (relationship -> value))
+      withIncludes(includes.updated(relationship, value))
 
     def setInclude[T, C[_]](relationshipRep: RelationshipRep[E, I, T, C] with Fetched[T, C]): E =
       setInclude(relationshipRep.relationship, relationshipRep.value)
@@ -32,17 +32,17 @@ trait EntityComponent {
     def one[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option]): One[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
-          OneFetched[E, I, T](relationship, value.asInstanceOf[Option[T]], id.asInstanceOf[Option[I]])
+          OneFetched[E, I, T](relationship, value.asInstanceOf[Option[T]], id)
         case _ =>
-          OneUnfetched[E, I, T](relationship, id.asInstanceOf[Option[I]])
+          OneUnfetched[E, I, T](relationship, id)
       }
 
     def many[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq]): Many[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
-          ManyFetched[E, I, T](relationship, value.asInstanceOf[Seq[T]], id.asInstanceOf[Option[I]])
+          ManyFetched[E, I, T](relationship, value.asInstanceOf[Seq[T]], id)
         case _ =>
-          ManyUnfetched[E, I, T](relationship, id.asInstanceOf[Option[I]])
+          ManyUnfetched[E, I, T](relationship, id)
       }
   }
 
