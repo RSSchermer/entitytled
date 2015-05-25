@@ -23,11 +23,6 @@ trait RelationshipComponent {
       action: DBIOAction[F[O], NoStream, Effect.Read],
       query: Query[Owner, O, Seq]
     )(implicit ec: ExecutionContext): DBIOAction[F[O], NoStream, Effect.Read]
-
-    def includeOnMap[K](
-      action: DBIOAction[Map[K, O], NoStream, Effect.Read],
-      query: Query[Owner, O, Seq]
-    )(implicit ec: ExecutionContext): DBIOAction[Map[K, O], NoStream, Effect.Read]
   }
 
   /** Represents a relationship between an owner entity and an owned relation. */
@@ -58,14 +53,6 @@ trait RelationshipComponent {
     )(implicit ec: ExecutionContext): DBIOAction[F[E], NoStream, Effect.Read] =
       action.zip(inclusionActionFor(query)).map { value =>
         value._1.map(e => e.setInclude(inclusionKey, value._2.getOrElse(e, emptyValue)))
-      }
-
-    def includeOnMap[K](
-      action: DBIOAction[Map[K, E], NoStream, Effect.Read],
-      query: Query[From, E, Seq]
-    )(implicit ec: ExecutionContext): DBIOAction[Map[K, E], NoStream, Effect.Read] =
-      action.zip(inclusionActionFor(query)).map { value =>
-        value._1.mapValues(e => e.setInclude(inclusionKey, value._2.getOrElse(e, emptyValue)))
       }
   }
 
@@ -220,7 +207,9 @@ trait RelationshipComponent {
     : DBIOAction[Map[E, Option[T]], NoStream, Effect.Read] = {
       val inclusionQuery = inclusionQueryFor(query)
       val result = inclusionQuery.result.map(_.toMap)
-      val withIncludes = includes.foldLeft(result)((a, i) => i.includeOnMap(a, inclusionQuery.map(_._2)))
+      val withIncludes = includes.foldLeft(result) { (a, i) =>
+        i.includeOn[({type λ[α] = Map[E, α]})#λ](a, inclusionQuery.map(_._2))
+      }
 
       withIncludes.map(_.groupBy(_._1).map(x => (x._1, x._2.values.headOption)))
     }
@@ -248,9 +237,11 @@ trait RelationshipComponent {
     : DBIOAction[Map[E, Seq[T]], NoStream, Effect.Read] = {
       val inclusionQuery = inclusionQueryFor(query)
       val result = inclusionQuery.result.map(_.toMap)
-      val withIncludes = includes.foldLeft(result)((a, i) => i.includeOnMap(a, inclusionQuery.map(_._2)))
+      val withIncludes = includes.foldLeft(result) { (a, i) =>
+        i.includeOn[({type λ[α] = Map[E, α]})#λ](a, inclusionQuery.map(_._2))
+      }
 
-      withIncludes.map(_.groupBy(_._1).map(x => (x._1, x._2.values.toSeq)))
+      withIncludes.map(_.groupBy(_._1).map(x => (x._1, x._2.values.toList)))
     }
   }
 }
