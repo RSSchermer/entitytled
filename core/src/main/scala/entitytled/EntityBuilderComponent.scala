@@ -4,6 +4,9 @@ import scala.concurrent.ExecutionContext
 import scala.language.higherKinds
 import slick.lifted.{CanBeQueryCondition, Ordered}
 
+import scalaz._
+import Scalaz._
+
 trait EntityBuilderComponent {
   self: DriverComponent with EntityComponent with RelationshipComponent =>
 
@@ -12,9 +15,9 @@ trait EntityBuilderComponent {
   trait EntityResultBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I, C[_]] {
     val query: Query[T, E, Seq]
 
-    val includes: List[Includable[T, _ <: Table[_], E, _]]
+    val includes: List[Includable[T, E]]
 
-    def include(include: Includable[T, _ <: Table[_], E, _]*): EntityResultBuilder[T, E, I, C]
+    def include(include: Includable[T, E]*): EntityResultBuilder[T, E, I, C]
 
     def result(implicit ec: ExecutionContext): DBIOAction[C[E], NoStream, Effect.Read]
   }
@@ -27,7 +30,7 @@ trait EntityBuilderComponent {
     val query: Query[T, E, Seq]
 
     /** The includables that should be included with the resulting entities. */
-    val includes: List[Includable[T, _ <: Table[_], E, _]] = List()
+    val includes: List[Includable[T, E]] = List()
 
     def all: AbstractEntityCollectionBuilder[T, E, I] = this
 
@@ -62,29 +65,28 @@ trait EntityBuilderComponent {
       new EntityCollectionBuilder(query.drop(num), includes)
 
     /** Include includables on the entities in the result set. */
-    def include(include: Includable[T, _ <: Table[_], E, _]*)
-    : AbstractEntityCollectionBuilder[T, E, I] =
+    def include(include: Includable[T, E]*): AbstractEntityCollectionBuilder[T, E, I] =
       new EntityCollectionBuilder(query, includes ++ include)
 
     def result(implicit ec: ExecutionContext): DBIOAction[Seq[E], NoStream, Effect.Read] =
-      includes.foldLeft(query.result.map(x => x))((a, i) => i.includeOnSeq(a, query))
+      includes.foldLeft(query.result.map(_.toList))((a, i) => i.includeOn(a, query))
   }
 
   class EntityCollectionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
       val query: Query[T, E, Seq],
-      override val includes: List[Includable[T, _ <: Table[_], E, _]])(implicit ev: BaseColumnType[I])
+      override val includes: List[Includable[T, E]])(implicit ev: BaseColumnType[I])
     extends AbstractEntityCollectionBuilder[T, E, I]
 
   class EntityInstanceBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
       val query: Query[T, E, Seq],
-      val includes: List[Includable[T, _ <: Table[_], E, _]])(implicit ev: BaseColumnType[I])
+      val includes: List[Includable[T, E]])(implicit ev: BaseColumnType[I])
     extends EntityResultBuilder[T, E, I, Option]
   {
     /** Include includables on the entity instance. */
-    def include(include: Includable[T, _ <: Table[_], E, _]*): EntityInstanceBuilder[T, E, I] =
+    def include(include: Includable[T, E]*): EntityInstanceBuilder[T, E, I] =
       new EntityInstanceBuilder(query, includes ++ include)
 
     def result(implicit ec: ExecutionContext): DBIOAction[Option[E], NoStream, Effect.Read] =
-      includes.foldLeft(query.result.headOption.map(x => x))((a, i) => i.includeOnOption(a, query))
+      includes.foldLeft(query.result.headOption.map(x => x))((a, i) => i.includeOn(a, query))
   }
 }

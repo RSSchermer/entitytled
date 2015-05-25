@@ -4,27 +4,25 @@ import scala.language.higherKinds
 
 import scala.concurrent.ExecutionContext
 
+import scalaz._
+import Scalaz._
+
 trait RelationshipComponent {
   self: DriverComponent with EntityComponent with RelationshipRepComponent =>
 
   import driver.api._
 
   /** Implement this trait to allow including */
-  trait Includable[Owner <: Table[O], To <: Table[T], O, T] {
+  trait Includable[Owner <: Table[O], O] {
 
     /** Include the includable on a list of instances.
       *
       * Include the includable on the given list of instances. The given
       * query must retrieve this same list of instances. */
-    def includeOnOption(
-      action: DBIOAction[Option[O], NoStream, Effect.Read],
+    def includeOn[F[_]: Functor](
+      action: DBIOAction[F[O], NoStream, Effect.Read],
       query: Query[Owner, O, Seq]
-    )(implicit ec: ExecutionContext): DBIOAction[Option[O], NoStream, Effect.Read]
-
-    def includeOnSeq(
-      action: DBIOAction[Seq[O], NoStream, Effect.Read],
-      query: Query[Owner, O, Seq]
-    )(implicit ec: ExecutionContext): DBIOAction[Seq[O], NoStream, Effect.Read]
+    )(implicit ec: ExecutionContext): DBIOAction[F[O], NoStream, Effect.Read]
 
     def includeOnMap[K](
       action: DBIOAction[Map[K, O], NoStream, Effect.Read],
@@ -34,7 +32,7 @@ trait RelationshipComponent {
 
   /** Represents a relationship between an owner entity and an owned relation. */
   trait Relationship[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T, +C[_]]
-    extends Includable[From, To, E, T]
+    extends Includable[From, E]
   {
     /** Returns a query for the owned relation for the owner entity with the
       * given id. */
@@ -47,25 +45,17 @@ trait RelationshipComponent {
     val inclusionKey: Relationship[From, To, E, I, T, C] = this
 
     /** Include includables for the owned relation. */
-    def include(includables: Includable[To, _ <: Table[_], T, _]*): Relationship[From, To, E, I, T, C]
+    def include(includables: Includable[To, T]*): Relationship[From, To, E, I, T, C]
 
     def inclusionQueryFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq]
 
     def inclusionActionFor(query: Query[From, E, Seq])(implicit ec: ExecutionContext)
     : DBIOAction[Map[E, C[T]], NoStream, Effect.Read]
 
-    def includeOnOption(
-      action: DBIOAction[Option[E], NoStream, Effect.Read],
+    def includeOn[F[_] : Functor](
+      action: DBIOAction[F[E], NoStream, Effect.Read],
       query: Query[From, E, Seq]
-    )(implicit ec: ExecutionContext): DBIOAction[Option[E], NoStream, Effect.Read] =
-      action.zip(inclusionActionFor(query)).map { value =>
-        value._1.map(e => e.setInclude(inclusionKey, value._2.getOrElse(e, emptyValue)))
-      }
-
-    def includeOnSeq(
-      action: DBIOAction[Seq[E], NoStream, Effect.Read],
-      query: Query[From, E, Seq]
-    )(implicit ec: ExecutionContext): DBIOAction[Seq[E], NoStream, Effect.Read] =
+    )(implicit ec: ExecutionContext): DBIOAction[F[E], NoStream, Effect.Read] =
       action.zip(inclusionActionFor(query)).map { value =>
         value._1.map(e => e.setInclude(inclusionKey, value._2.getOrElse(e, emptyValue)))
       }
@@ -136,7 +126,7 @@ trait RelationshipComponent {
     def actionFor(id: I)(implicit ec: ExecutionContext): DBIOAction[Option[T], NoStream, Effect.Read] =
       queryFor(id).result.headOption
     
-    def include(includables: Includable[To, _ <: Table[_], T, _]*): OneIncluding[From, To, E, I, T] =
+    def include(includables: Includable[To, T]*): OneIncluding[From, To, E, I, T] =
       new OneIncluding(this, includables)
 
     def inclusionActionFor(query: Query[From, E, Seq])(implicit ec: ExecutionContext)
@@ -153,7 +143,7 @@ trait RelationshipComponent {
     def actionFor(id: I)(implicit ec: ExecutionContext): DBIOAction[Seq[T], NoStream, Effect.Read] =
       queryFor(id).result
     
-    def include(includables: Includable[To, _ <: Table[_], T, _]*): ManyIncluding[From, To, E, I, T] =
+    def include(includables: Includable[To, T]*): ManyIncluding[From, To, E, I, T] =
       new ManyIncluding(this, includables)
 
     def inclusionActionFor(query: Query[From, E, Seq])(implicit ec: ExecutionContext)
@@ -197,7 +187,7 @@ trait RelationshipComponent {
       val relationship: Relationship[From, To, E, I, T, C])
     extends Relationship[From, To, E, I, T, C]
   {
-    val includes: Seq[Includable[To, _ <: Table[_], T, _]]
+    val includes: Seq[Includable[To, T]]
 
     override val inclusionKey: Relationship[From, To, E, I, T, C] = relationship.inclusionKey
 
@@ -211,7 +201,7 @@ trait RelationshipComponent {
   /** Wraps 'to one' relationships for including one or more includables. */
   class OneIncluding[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
       override val relationship: Relationship[From, To, E, I, T, Option] with ToOneRelationship[From, To, E, I, T],
-      val includes: Seq[Includable[To, _ <: Table[_], T, _]])
+      val includes: Seq[Includable[To, T]])
     extends IncludingRelationship[From, To, E, I, T, Option](relationship)
     with ToOneRelationship[From, To, E, I, T]
   {
@@ -220,10 +210,10 @@ trait RelationshipComponent {
       val action = relationship.actionFor(id)
       val query = queryFor(id)
 
-      includes.foldLeft(action)((a, i) => i.includeOnOption(a, query))
+      includes.foldLeft(action)((a, i) => i.includeOn(a, query))
     }
 
-    override def include(includables: Includable[To, _ <: Table[_], T, _]*): OneIncluding[From, To, E, I, T] =
+    override def include(includables: Includable[To, T]*): OneIncluding[From, To, E, I, T] =
       new OneIncluding(relationship, includes ++ includables)
 
     override def inclusionActionFor(query: Query[From, E, Seq])(implicit ec: ExecutionContext)
@@ -239,7 +229,7 @@ trait RelationshipComponent {
   /** Wraps 'to many' relationships for including one or more includables. */
   class ManyIncluding[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
       override val relationship: Relationship[From, To, E, I, T, Seq] with ToManyRelationship[From, To, E, I, T],
-      val includes: Seq[Includable[To, _ <: Table[_], T, _]])
+      val includes: Seq[Includable[To, T]])
     extends IncludingRelationship[From, To, E, I, T, Seq](relationship)
     with ToManyRelationship[From, To, E, I, T]
   {
@@ -248,10 +238,10 @@ trait RelationshipComponent {
       val action = relationship.actionFor(id)
       val query = queryFor(id)
 
-      includes.foldLeft(action.map(x => x))((a, i) => i.includeOnSeq(a, query))
+      includes.foldLeft(action.map(_.toList))((a, i) => i.includeOn(a, query))
     }
 
-    override def include(includables: Includable[To, _ <: Table[_], T, _]*): ManyIncluding[From, To, E, I, T] =
+    override def include(includables: Includable[To, T]*): ManyIncluding[From, To, E, I, T] =
       new ManyIncluding(relationship, includes ++ includables)
 
     override def inclusionActionFor(query: Query[From, E, Seq])(implicit ec: ExecutionContext)
