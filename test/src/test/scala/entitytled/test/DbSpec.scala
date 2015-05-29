@@ -23,13 +23,13 @@ trait DbSpec extends BeforeAndAfterAll with Entitytled  {
   override protected def afterAll(): Unit =
     db.close()
 
-  def query[T](dbAction: DBIO[T])(implicit ex: ExecutionContext, timeout: Duration = 5 seconds): Any =
+  def query[T](dbAction: DBIO[T])(implicit ex: ExecutionContext, timeout: Duration = 15 seconds): Any =
     runAction(dbAction)
 
-  def commit[T](dbAction: DBIO[T])(implicit ex: ExecutionContext, timeout: Duration = 5 seconds): Any =
+  def commit[T](dbAction: DBIO[T])(implicit ex: ExecutionContext, timeout: Duration = 15 seconds): Any =
     runAction(dbAction.transactionally)
 
-  def rollback[T](dbAction: DBIO[T])(implicit ex: ExecutionContext, timeout: Duration = 5 seconds): Any = {
+  def rollback[T](dbAction: DBIO[T])(implicit ex: ExecutionContext, timeout: Duration = 15 seconds): Any = {
 
     case class RollbackException(expected: T) extends RuntimeException("rollback exception")
 

@@ -11,8 +11,24 @@ trait EntityComponent {
   
   import driver.api._
 
-  // TODO: replace with custom Map implementation and get rid of all asInstanceOf calls
-  type Includes[E <: Entity[E, _]] = Map[Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, _, C] forSome { type C[_] }, Any]
+  type Include[E <: Entity[E, _]] =
+    (Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C], C[T]) forSome { type C[_]; type T }
+
+  class Includes[E <: Entity[E, _]](values: Seq[Include[E]]) {
+    private val relationshipMap: Map[Any, Any] = values.toMap
+
+    def get[T, C[_]](relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C]): Option[C[T]] =
+      relationshipMap.get(relationship).asInstanceOf[Option[C[T]]]
+
+    def updated[T, C[_]](
+      relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C],
+      value: C[T]): Includes[E] =
+    new Includes(relationshipMap.updated(relationship, value).toSeq.asInstanceOf[Seq[Include[E]]])
+  }
+
+  object Includes {
+    def apply[E <: Entity[E, _]](values: Include[E]*): Includes[E] = new Includes(values)
+  }
 
   /** Base class for entities. Entities need to be uniquely identifiable by an ID. */
   abstract class Entity[E <: Entity[E, I], I](implicit val includes: Includes[E], includesSetter: IncludesSetter[E]) {
@@ -32,7 +48,7 @@ trait EntityComponent {
     def one[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option]): One[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
-          OneFetched[E, I, T](relationship, value.asInstanceOf[Option[T]], id)
+          OneFetched[E, I, T](relationship, value, id)
         case _ =>
           OneUnfetched[E, I, T](relationship, id)
       }
@@ -40,7 +56,7 @@ trait EntityComponent {
     def many[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq]): Many[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
-          ManyFetched[E, I, T](relationship, value.asInstanceOf[Seq[T]], id)
+          ManyFetched[E, I, T](relationship, value, id)
         case _ =>
           ManyUnfetched[E, I, T](relationship, id)
       }

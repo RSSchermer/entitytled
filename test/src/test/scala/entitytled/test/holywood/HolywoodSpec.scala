@@ -26,7 +26,7 @@ trait HolywoodSpec extends DbSpec with H2Profile with Model {
 
     val result = db.run((directors.schema ++ movies.schema ++ stars.schema ++ TableQuery[MoviesStars].schema).create)
 
-    Await.result(result, 5 seconds)
+    Await.result(result, 15 seconds)
 
     db
   }
