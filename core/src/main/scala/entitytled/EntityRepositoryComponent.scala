@@ -1,6 +1,8 @@
 package entitytled
 
 import scala.concurrent.ExecutionContext
+import scala.language.experimental.macros
+import scala.reflect.macros._
 
 import entitytled.exception.MissingIDException
 
@@ -10,8 +12,11 @@ trait EntityRepositoryComponent {
   import driver.api._
 
   /** Repository class for managing the retrieval and persistence of entities. */
-  abstract class EntityRepository[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (implicit ev: BaseColumnType[I]) extends AbstractEntityCollectionBuilder[T, E, I] {
+  class EntityRepository[T <: EntityTable[E, I], E <: Entity[E, I], I]
+  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T, E])
+    extends AbstractEntityCollectionBuilder[T, E, I]
+  {
+    val query: Query[T, E, Seq] = tqp.tableQuery
 
     /** Inserts a given entity instance into the database. */
     def insert(instance: E)(implicit ec: ExecutionContext): DBIOAction[I, NoStream, Effect.Write] = {
@@ -82,5 +87,28 @@ trait EntityRepositoryComponent {
     /** May be overriden to specify actions that should be taken after
       * deleting an entity. */
     protected def afterDelete(key: I)(implicit ec: ExecutionContext): Unit = ()
+  }
+
+  trait TableQueryProvider[T <: Table[E], E] {
+    def tableQuery: Query[T, E, Seq]
+  }
+
+  object TableQueryProvider {
+    implicit def materialize[T <: Table[E], E]: TableQueryProvider[T, E] =
+      macro MaterializeTableQueryProviderImpl.apply[T]
+  }
+}
+
+object MaterializeTableQueryProviderImpl {
+  def apply[T : c.WeakTypeTag](c: Context) = {
+    import c.universe._
+
+    val tableType = c.weakTypeOf[T].typeSymbol.asClass
+    val elementType = c.weakTypeOf[T].asInstanceOf[TypeRefApi].args.head.typeSymbol.asClass
+
+    c.Expr(q"""
+    new TableQueryProvider[$tableType, $elementType] {
+      def tableQuery: Query[$tableType, $elementType, Seq] = TableQuery[T]
+    }""")
   }
 }

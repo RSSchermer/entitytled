@@ -11,12 +11,11 @@ trait EntityCompanionComponent {
   import driver.api._
 
   /** Trait for entity companion objects. */
-  abstract class EntityCompanion[T <: EntityTable[E, I], E <: Entity[E, I], I](implicit ev: BaseColumnType[I])
+  class EntityCompanion[T <: EntityTable[E, I], E <: Entity[E, I], I]
+  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T, E])
     extends EntityRepository[T, E, I]
   {
     implicit val defaultIncludes: Includes[E] = Map()
-
-    val query: Query[T, E, Seq]
 
     /** Creates a new direct (without a join-table) 'to one' relationship */
     protected def toOne[To <: Table[M], M](
