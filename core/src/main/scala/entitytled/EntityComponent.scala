@@ -11,27 +11,8 @@ trait EntityComponent {
   
   import driver.api._
 
-  type Include[E <: Entity[E, _]] =
-    (Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C], C[T]) forSome { type C[_]; type T }
-
-  class Includes[E <: Entity[E, _]](values: Seq[Include[E]]) {
-    private val relationshipMap: Map[Any, Any] = values.toMap
-
-    def get[T, C[_]](relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C]): Option[C[T]] =
-      relationshipMap.get(relationship).asInstanceOf[Option[C[T]]]
-
-    def updated[T, C[_]](
-      relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C],
-      value: C[T]): Includes[E] =
-    new Includes(relationshipMap.updated(relationship, value).toSeq.asInstanceOf[Seq[Include[E]]])
-  }
-
-  object Includes {
-    def apply[E <: Entity[E, _]](values: Include[E]*): Includes[E] = new Includes(values)
-  }
-
   /** Base class for entities. Entities need to be uniquely identifiable by an ID. */
-  abstract class Entity[E <: Entity[E, I], I](implicit val includes: Includes[E], includesSetter: IncludesSetter[E]) {
+  abstract class Entity[E <: Entity[E, I], I](implicit includes: Includes[E] = Includes(), includesSetter: IncludesSetter[E]) {
     val id: Option[I]
 
     def withIncludes(includes: Includes[E]): E =
@@ -62,15 +43,6 @@ trait EntityComponent {
       }
   }
 
-  trait IncludesSetter[E <: Entity[E, _]] {
-    def withIncludes(instance: E, includes: Includes[E]): E
-  }
-
-  object IncludesSetter {
-    implicit def materializeIncludesSetter[E <: Entity[E, _]]: IncludesSetter[E] =
-      macro MaterializeIncludesSetterImpl.apply[E]
-  }
-
   /** Base class for entity tables */
   abstract class EntityTable[E <: Entity[E, I], I](
       tag: Tag,
@@ -82,6 +54,35 @@ trait EntityComponent {
       this(tag, None, tableName)
 
     def id: Rep[I]
+  }
+
+  type Include[E <: Entity[E, _]] =
+    (Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C], C[T]) forSome { type C[_]; type T }
+
+  class Includes[E <: Entity[E, _]](values: Seq[Include[E]]) {
+    private val relationshipMap: Map[Any, Any] = values.toMap
+
+    def get[T, C[_]](relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C]): Option[C[T]] =
+      relationshipMap.get(relationship).asInstanceOf[Option[C[T]]]
+
+    def updated[T, C[_]](
+      relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C],
+      value: C[T]
+    ): Includes[E] =
+      new Includes(relationshipMap.updated(relationship, value).toSeq.asInstanceOf[Seq[Include[E]]])
+  }
+
+  object Includes {
+    def apply[E <: Entity[E, _]](values: Include[E]*): Includes[E] = new Includes(values)
+  }
+
+  trait IncludesSetter[E <: Entity[E, _]] {
+    def withIncludes(instance: E, includes: Includes[E]): E
+  }
+
+  object IncludesSetter {
+    implicit def materializeIncludesSetter[E <: Entity[E, _]]: IncludesSetter[E] =
+      macro MaterializeIncludesSetterImpl.apply[E]
   }
 }
 
