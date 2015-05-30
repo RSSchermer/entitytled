@@ -25,7 +25,6 @@ trait Model {
 
   class Directors(tag: Tag) extends EntityTable[Director, DirectorID](tag, "DIRECTORS") {
     def id = column[DirectorID]("id", O.PrimaryKey, O.AutoInc)
-
     def name = column[String]("name")
 
     def * = (id.?, name) <>((Director.apply _).tupled, Director.unapply)
@@ -55,9 +54,7 @@ trait Model {
 
   class Movies(tag: Tag) extends EntityTable[Movie, MovieID](tag, "MOVIES") {
     def id = column[MovieID]("id", O.PrimaryKey, O.AutoInc)
-
     def title = column[String]("title")
-
     def directorID = column[DirectorID]("director_id")
 
     def * = (id.?, title, directorID) <>((Movie.apply _).tupled, Movie.unapply)
@@ -83,9 +80,7 @@ trait Model {
   }
   class Stars(tag: Tag) extends EntityTable[Star, StarID](tag, "STARS") {
     def id = column[StarID]("id", O.PrimaryKey, O.AutoInc)
-
     def name = column[String]("name")
-
     def age = column[Int]("age")
 
     def * = (id.?, name, age) <>((Star.apply _).tupled, Star.unapply)
@@ -93,15 +88,12 @@ trait Model {
 
   class MoviesStars(tag: Tag) extends Table[(MovieID, StarID)](tag, "MOVIES_STARS") {
     def movieID = column[MovieID]("movie_id")
-
     def starID = column[StarID]("star_id")
 
     def * = (movieID, starID)
 
     def pk = primaryKey("MOVIES_STARS_PK", (movieID, starID))
-
     def movie = foreignKey("MOVIES_STARS_MOVIE_FK", movieID, TableQuery[Movies])(_.id)
-
     def star = foreignKey("MOVIES_STARS_STAR_FK", starID, TableQuery[Stars])(_.id)
   }
 }
