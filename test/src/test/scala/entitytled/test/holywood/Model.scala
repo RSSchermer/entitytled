@@ -18,8 +18,6 @@ trait Model {
   }
 
   object Director extends EntityCompanion[Directors, Director, DirectorID] {
-    val query = TableQuery[Directors]
-
     val movies = toMany[Movies, Movie](
       TableQuery[Movies],
       _.id === _.directorID)
@@ -46,8 +44,6 @@ trait Model {
   }
 
   object Movie extends EntityCompanion[Movies, Movie, MovieID] {
-    val query = TableQuery[Movies]
-
     val stars = toManyThrough[Stars, MoviesStars, Star](
       TableQuery[MoviesStars] join TableQuery[Stars] on(_.starID === _.id),
       _.id === _._1.movieID)
@@ -81,8 +77,6 @@ trait Model {
   }
 
   object Star extends EntityCompanion[Stars, Star, StarID] {
-    val query = TableQuery[Stars]
-
     val movies = toManyThrough[Movies, MoviesStars, Movie](
       TableQuery[MoviesStars] join TableQuery[Movies] on(_.movieID === _.id),
       _.id === _._1.starID)
