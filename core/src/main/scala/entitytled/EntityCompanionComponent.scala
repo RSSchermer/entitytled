@@ -12,7 +12,7 @@ trait EntityCompanionComponent {
 
   /** Trait for entity companion objects. */
   class EntityCompanion[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T, E])
+  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T])
     extends EntityRepository[T, E, I]
   {
     implicit val defaultIncludes: Includes[E] = Map()

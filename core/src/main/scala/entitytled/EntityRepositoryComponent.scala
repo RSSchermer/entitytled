@@ -13,10 +13,10 @@ trait EntityRepositoryComponent {
 
   /** Repository class for managing the retrieval and persistence of entities. */
   class EntityRepository[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T, E])
+  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T])
     extends AbstractEntityCollectionBuilder[T, E, I]
   {
-    val query: Query[T, E, Seq] = tqp.tableQuery
+    val query: Query[T, E, Seq] = tqp.tableQuery.asInstanceOf[Query[T, E, Seq]]
 
     /** Inserts a given entity instance into the database. */
     def insert(instance: E)(implicit ec: ExecutionContext): DBIOAction[I, NoStream, Effect.Write] = {
@@ -89,12 +89,12 @@ trait EntityRepositoryComponent {
     protected def afterDelete(key: I)(implicit ec: ExecutionContext): Unit = ()
   }
 
-  trait TableQueryProvider[T <: Table[E], E] {
-    def tableQuery: Query[T, E, Seq]
+  trait TableQueryProvider[T <: Table[_]] {
+    def tableQuery: Query[T, _, Seq]
   }
 
   object TableQueryProvider {
-    implicit def materialize[T <: Table[E], E]: TableQueryProvider[T, E] =
+    implicit def materialize[T <: Table[_]]: TableQueryProvider[T] =
       macro MaterializeTableQueryProviderImpl.apply[T]
   }
 }
@@ -104,11 +104,10 @@ object MaterializeTableQueryProviderImpl {
     import c.universe._
 
     val tableType = c.weakTypeOf[T].typeSymbol.asClass
-    val elementType = c.weakTypeOf[T].asInstanceOf[TypeRefApi].args.head.typeSymbol.asClass
 
     c.Expr(q"""
-    new TableQueryProvider[$tableType, $elementType] {
-      def tableQuery: Query[$tableType, $elementType, Seq] = TableQuery[T]
+    new TableQueryProvider[$tableType] {
+      def tableQuery: Query[$tableType, $tableType#TableElementType, Seq] = TableQuery[$tableType]
     }""")
   }
 }
