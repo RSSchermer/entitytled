@@ -18,9 +18,7 @@ trait Model {
   }
 
   object Director extends EntityCompanion[Directors, Director, DirectorID] {
-    val movies = toMany[Movies, Movie](
-      TableQuery[Movies],
-      _.id === _.directorID)
+    val movies = toMany[Movies, Movie]
   }
 
   class Directors(tag: Tag) extends EntityTable[Director, DirectorID](tag, "DIRECTORS") {
@@ -47,9 +45,7 @@ trait Model {
       TableQuery[MoviesStars] join TableQuery[Stars] on(_.starID === _.id),
       _.id === _._1.movieID)
 
-    val director = toOne[Directors, Director](
-      TableQuery[Directors],
-      _.directorID === _.id)
+    val director = toOne[Directors, Director]
   }
 
   class Movies(tag: Tag) extends EntityTable[Movie, MovieID](tag, "MOVIES") {
