@@ -1,8 +1,12 @@
 package entitytled
 
 import scala.language.higherKinds
+import scala.language.experimental.macros
+import scala.reflect.macros._
 
 import scala.concurrent.ExecutionContext
+
+import slick.lifted.{ AbstractTable, ForeignKeyQuery }
 
 import scalaz._
 import Scalaz._
@@ -242,6 +246,76 @@ trait RelationshipComponent {
       }
 
       withIncludes.map(_.groupBy(_._1).map(x => (x._1, x._2.values.toList)))
+    }
+  }
+
+  object DirectJoinCondition {
+    def apply[From <: Table[_], To <: Table[_]]: (From, To) => Rep[Boolean] =
+      macro DirectJoinConditionImpl[From, To, (From, To) => Rep[Boolean]]
+  }
+}
+
+trait JoinConditionMacroImpl {
+  protected def foreignKeys[From <: AbstractTable[_] : c.WeakTypeTag, To <: AbstractTable[_] : c.WeakTypeTag]
+  (c: Context): Seq[c.universe.MethodSymbol] = {
+    c.weakTypeOf[From].typeSymbol.typeSignature.members
+      .filter(_.isMethod).map(_.asMethod)
+      .filter(_.returnType <:< c.weakTypeOf[ForeignKeyQuery[To, _]])
+      .toList
+  }
+
+  protected def idColumnType[T <: AbstractTable[_] : c.WeakTypeTag](c: Context): c.universe.Type = {
+    val idField = c.weakTypeOf[T].typeSymbol.typeSignature.members
+      .filter(_.isMethod).map(_.asMethod)
+      .find(_.name.toString == "id")
+
+    if (idField.isEmpty) {
+      val tableName = c.weakTypeOf[T].typeSymbol.asClass.fullName
+      c.abort(c.enclosingPosition, s"Could not find an `id` member on $tableName.")
+    }
+
+    idField.get.returnType
+  }
+}
+
+object DirectJoinConditionImpl extends JoinConditionMacroImpl {
+  def apply[From <: AbstractTable[_] : c.WeakTypeTag, To <: AbstractTable[_] : c.WeakTypeTag, Res : c.WeakTypeTag]
+  (c: Context): c.Expr[Res] = {
+    import c.universe._
+
+    val fromTableType = c.weakTypeOf[From].typeSymbol.asClass
+    val toTableType = c.weakTypeOf[To].typeSymbol.asClass
+
+    val fromTableName = fromTableType.fullName
+    val toTableName = toTableType.fullName
+
+    val fromKeys = foreignKeys[From, To](c)
+    val toKeys = foreignKeys[To, From](c)
+
+    if (fromKeys.size > 1) {
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $fromTableName declares more than 1 foreign key to $toTableName.")
+    } else if (toKeys.size > 1) {
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $toTableName declares more than 1 foreign key to $fromTableName.")
+    } else if (fromKeys.size + toKeys.size > 1) {
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $toTableName and $fromTableName both declare a foreign key to each other.")
+    } else if (fromKeys.size + toKeys.size == 0) {
+      c.abort(c.enclosingPosition,
+        s"No candidate foreign key: $fromTableName and $toTableName don't declare any foreign keys to each other.")
+    }
+
+    if (fromKeys.size == 1) {
+      c.Expr(q"""
+        (f: $fromTableType, t: $toTableType) =>
+          f.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[To](c)}] === t.id
+      """)
+    } else {
+      c.Expr(q"""
+        (f: $fromTableType, t: $toTableType) =>
+          f.id === t.${toKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[From](c)}]
+      """)
     }
   }
 }
