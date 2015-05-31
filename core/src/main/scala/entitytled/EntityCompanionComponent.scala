@@ -38,12 +38,12 @@ trait EntityCompanionComponent {
 
     protected def toOne[To <: Table[M], M](
       toQuery: Query[To, M, Seq]
-    )(implicit provider: DirectJoinConditionProvider[T, To, I]): ToOne[T, To, E, I, M] =
+    )(implicit provider: DirectJoinConditionProvider[T, To]): ToOne[T, To, E, I, M] =
       new ToOne[T, To, E, I, M](query, toQuery, provider.joinCondition)
 
     protected def toOne[To <: Table[M], M](implicit
       tqp: DirectToQueryProvider[To, M],
-      jcp: DirectJoinConditionProvider[T, To, I]
+      jcp: DirectJoinConditionProvider[T, To]
     ): ToOne[T, To, E, I, M] =
       new ToOne[T, To, E, I, M](query, tqp.toQuery, jcp.joinCondition)
 
@@ -61,12 +61,12 @@ trait EntityCompanionComponent {
 
     protected def toMany[To <: Table[M], M](
       toQuery: Query[To, M, Seq]
-    )(implicit provider: DirectJoinConditionProvider[T, To, I]): ToMany[T, To, E, I, M] =
+    )(implicit provider: DirectJoinConditionProvider[T, To]): ToMany[T, To, E, I, M] =
       new ToMany[T, To, E, I, M](query, toQuery, provider.joinCondition)
 
     protected def toMany[To <: Table[M], M](implicit
       tqp: DirectToQueryProvider[To, M],
-      jcp: DirectJoinConditionProvider[T, To, I]
+      jcp: DirectJoinConditionProvider[T, To]
     ): ToMany[T, To, E, I, M] =
       new ToMany[T, To, E, I, M](query, tqp.toQuery, jcp.joinCondition)
 
@@ -98,15 +98,16 @@ trait EntityCompanionComponent {
   @implicitNotFound("Could not infer a join condition. This can be for the following reasons:\n" +
     "- No candidate foreign keys are declared for either ${From} to ${To}, or ${To} to ${From}.\n" +
     "- Multiple candidate foreign keys are declared for ${From} to ${To}, or ${To} to ${From}.\n" +
-    "To resolve this, either specify the joinCondition argument explicitly, " +
+    "- The candidate foreign key is non-standard (does not point to the other tables id column).\n" +
+    "To resolve this, either provide the joinCondition argument explicitly, " +
     "or make sure exactly 1 candidate foreign key is defined.")
-  abstract class DirectJoinConditionProvider[From <: EntityTable[_, I], To <: Table[_], I] {
-    def joinCondition(implicit ev: BaseColumnType[I]): (From, To) => Rep[Boolean]
+  trait DirectJoinConditionProvider[From <: Table[_], To <: Table[_]] {
+    def joinCondition: (From, To) => Rep[Boolean]
   }
 
   object DirectJoinConditionProvider {
-    implicit def materialize[From <: EntityTable[_, I], To <: Table[_], I]: DirectJoinConditionProvider[From, To, I] =
-      macro DirectJoinConditionProviderMaterializeImpl.apply[From, To, I, DirectJoinConditionProvider[From, To, I]]
+    implicit def materialize[From <: Table[_], To <: Table[_]]: DirectJoinConditionProvider[From, To] =
+      macro DirectJoinConditionProviderMaterializeImpl.apply[From, To, DirectJoinConditionProvider[From, To]]
   }
 }
 
@@ -125,65 +126,63 @@ object DirectToQueryProviderMaterializeImpl {
 }
 
 object DirectJoinConditionProviderMaterializeImpl {
-  def apply[From <: AbstractTable[_], To <: AbstractTable[_], I, Res](c: Context)(implicit
-    ev1: c.WeakTypeTag[From],
-    ev2: c.WeakTypeTag[To],
-    ev3: c.WeakTypeTag[I],
-    ev4: c.WeakTypeTag[Res])
-  : c.Expr[Res] = {
+  def apply[From <: AbstractTable[_] : c.WeakTypeTag, To <: AbstractTable[_] : c.WeakTypeTag, Res : c.WeakTypeTag]
+  (c: Context): c.Expr[Res] = {
     import c.universe._
 
     val fromTableType = c.weakTypeOf[From].typeSymbol.asClass
     val toTableType = c.weakTypeOf[To].typeSymbol.asClass
-    val fromIdType = c.weakTypeOf[I].typeSymbol.asClass
 
-    val fromKeys = c.weakTypeOf[From].typeSymbol.typeSignature.members
-      .filter(_.isMethod).map(_.asMethod)
-      .filter(_.returnType <:< c.weakTypeOf[ForeignKeyQuery[To, _]])
-    val toKeys = c.weakTypeOf[To].typeSymbol.typeSignature.members
-      .filter(_.isMethod).map(_.asMethod)
-      .filter(_.returnType <:< c.weakTypeOf[ForeignKeyQuery[From, _]])
+    val fromTableName = fromTableType.fullName
+    val toTableName = toTableType.fullName
+
+    val fromKeys = foreignKeys[From, To](c)
+    val toKeys = foreignKeys[To, From](c)
 
     if (fromKeys.size > 1) {
-      c.abort(c.enclosingPosition, "Could not infer join condition: FromTable declared more than 1 foreign key to ToTable.")
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $fromTableName declares more than 1 foreign key to $toTableName.")
     } else if (toKeys.size > 1) {
-      c.abort(c.enclosingPosition, "Could not infer join condition: ToTable declared more than 1 foreign key to FromTable.")
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $toTableName declares more than 1 foreign key to $fromTableName.")
     } else if (fromKeys.size + toKeys.size > 1) {
-      c.abort(c.enclosingPosition, "Could not infer join condition: ToTable and FromTable both declare foreign keys to each other.")
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $toTableName and $fromTableName both declare a foreign key to each other.")
     } else if (fromKeys.size + toKeys.size == 0) {
-      c.abort(c.enclosingPosition, "Could not infer join condition: neither FromTable nor ToTable declares a foreign key to the other table.")
+      c.abort(c.enclosingPosition,
+        s"No candidate foreign key: $fromTableName and $toTableName don't declare any foreign keys to each other.")
     }
 
-    if (fromKeys.size == 1) {
-      val idField = c.weakTypeOf[To].typeSymbol.typeSignature.members
-        .filter(_.isMethod).map(_.asMethod).find(_.name.toString == "id")
-
-      if (idField.isEmpty) {
-        c.abort(c.enclosingPosition, "Could not find `id` method on ToTable.")
-      }
-
-      val idType = idField.get.returnType
-
-      c.Expr(q"""
-      new DirectJoinConditionProvider[$fromTableType, $toTableType, $fromIdType] {
-        def joinCondition(implicit ev: BaseColumnType[$fromIdType]): ($fromTableType, $toTableType) => Rep[Boolean] =
-          _.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[$idType] === _.id
-      }""")
+    val joinCondition = if (fromKeys.size == 1) {
+      q"""_.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[To](c)}] === _.id"""
     } else {
-      val idField = c.weakTypeOf[From].typeSymbol.typeSignature.members
-        .filter(_.isMethod).map(_.asMethod).find(_.name.toString == "id")
-
-      if (idField.isEmpty) {
-        c.abort(c.enclosingPosition, "Could not find `id` method on ToTable.")
-      }
-
-      val idType = idField.get.returnType
-
-      c.Expr(q"""
-      new DirectJoinConditionProvider[$fromTableType, $toTableType, $fromIdType] {
-        def joinCondition(implicit ev: BaseColumnType[$fromIdType]): ($fromTableType, $toTableType) => Rep[Boolean] =
-          _.id === _.${toKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[$idType]
-      }""")
+      q"""_.id === _.${toKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[From](c)}]"""
     }
+
+    c.Expr(q"""
+    new DirectJoinConditionProvider[$fromTableType, $toTableType] {
+      def joinCondition: ($fromTableType, $toTableType) => Rep[Boolean] = $joinCondition
+    }""")
+  }
+
+  private def foreignKeys[From <: AbstractTable[_] : c.WeakTypeTag, To <: AbstractTable[_] : c.WeakTypeTag]
+  (c: Context): Seq[c.universe.MethodSymbol] = {
+    c.weakTypeOf[From].typeSymbol.typeSignature.members
+      .filter(_.isMethod).map(_.asMethod)
+      .filter(_.returnType <:< c.weakTypeOf[ForeignKeyQuery[To, _]])
+      .toList
+  }
+
+  private def idColumnType[T <: AbstractTable[_] : c.WeakTypeTag](c: Context): c.universe.Type = {
+    val idField = c.weakTypeOf[T].typeSymbol.typeSignature.members
+      .filter(_.isMethod).map(_.asMethod)
+      .find(_.name.toString == "id")
+
+    if (idField.isEmpty) {
+      val tableName = c.weakTypeOf[T].typeSymbol.asClass.fullName
+      c.abort(c.enclosingPosition, s"Could not find an `id` member on $tableName.")
+    }
+
+    idField.get.returnType
   }
 }
