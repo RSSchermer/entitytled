@@ -27,8 +27,8 @@ trait EntityCompanionComponent {
     /** Creates a new direct (without a join-table) 'to one' relationship */
     protected def toOne[To <: Table[M], M](
       joinCondition: (T, To) => Rep[Boolean]
-    )(implicit provider: DirectToQueryProvider[To, M]): ToOne[T, To, E, I, M] =
-      new ToOne[T, To, E, I, M](query, provider.toQuery, joinCondition)
+    )(implicit provider: TableQueryProvider[To, M]): ToOne[T, To, E, I, M] =
+      new ToOne[T, To, E, I, M](query, provider.tableQuery, joinCondition)
 
     protected def toOne[To <: Table[M], M](
       toQuery: Query[To, M, Seq],
@@ -42,15 +42,15 @@ trait EntityCompanionComponent {
       new ToOne[T, To, E, I, M](query, toQuery, provider.joinCondition)
 
     protected def toOne[To <: Table[M], M](implicit
-      tqp: DirectToQueryProvider[To, M],
+      tqp: TableQueryProvider[To, M],
       jcp: DirectJoinConditionProvider[T, To]
     ): ToOne[T, To, E, I, M] =
-      new ToOne[T, To, E, I, M](query, tqp.toQuery, jcp.joinCondition)
+      new ToOne[T, To, E, I, M](query, tqp.tableQuery, jcp.joinCondition)
 
     protected def toMany[To <: Table[M], M](
       joinCondition: (T, To) => Rep[Boolean]
-    )(implicit provider: DirectToQueryProvider[To, M]): ToMany[T, To, E, I, M] =
-      toMany[To, M](provider.toQuery, joinCondition)
+    )(implicit provider: TableQueryProvider[To, M]): ToMany[T, To, E, I, M] =
+      toMany[To, M](provider.tableQuery, joinCondition)
 
     /** Creates a new direct (without a join-table) 'to many' relationship */
     protected def toMany[To <: Table[M], M](
@@ -65,10 +65,10 @@ trait EntityCompanionComponent {
       new ToMany[T, To, E, I, M](query, toQuery, provider.joinCondition)
 
     protected def toMany[To <: Table[M], M](implicit
-      tqp: DirectToQueryProvider[To, M],
+      tqp: TableQueryProvider[To, M],
       jcp: DirectJoinConditionProvider[T, To]
     ): ToMany[T, To, E, I, M] =
-      new ToMany[T, To, E, I, M](query, tqp.toQuery, jcp.joinCondition)
+      new ToMany[T, To, E, I, M](query, tqp.tableQuery, jcp.joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to one' relationship */
     protected def toOneThrough[To <: Table[M], Through <: Table[_], M](
@@ -83,16 +83,27 @@ trait EntityCompanionComponent {
       joinCondition: (T, (Through, To)) => Rep[Boolean]
     ): ToManyThrough[T, Through, To, E, I, M] =
       new ToManyThrough[T, Through, To, E, I, M](query, toQuery, joinCondition)
+
+    protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
+      joinCondition: (T, (Through, To)) => Rep[Boolean]
+    )(implicit provider: IndirectToQueryProvider[To, Through, M])
+    : ToManyThrough[T, Through, To, E, I, M] =
+      new ToManyThrough[T, Through, To, E, I, M](query, provider.toQuery, joinCondition)
   }
 
-  @implicitNotFound("Could not infer a target query, please specify the toQuery argument explicitly.")
-  trait DirectToQueryProvider[To <: Table[T], T] {
-    def toQuery: Query[To, T, Seq]
+  @implicitNotFound("Could not infer a target query. This can be for the following reasons:\n" +
+    "- No candidate foreign keys are declared for either ${Through} to ${To}, or ${To} to ${Through}.\n" +
+    "- Multiple candidate foreign keys are declared for ${Through} to ${To}, or ${To} to ${Through}.\n" +
+    "- The candidate foreign key is non-standard (does not point to the other tables id column).\n" +
+    "To resolve this, either provide the toQuery argument explicitly, " +
+    "or make sure exactly 1 candidate foreign key is defined.")
+  trait IndirectToQueryProvider[To <: Table[T], Through <: Table[_], T] {
+    def toQuery: Query[(Through, To), _ <: (_, T), Seq]
   }
 
-  object DirectToQueryProvider {
-    implicit def materialize[To <: Table[T], T]: DirectToQueryProvider[To, T] =
-      macro DirectToQueryProviderMaterializeImpl.apply[To, T, DirectToQueryProvider[To, T]]
+  object IndirectToQueryProvider {
+    implicit def materialize[To <: Table[T], Through <: Table[_], T]: IndirectToQueryProvider[To, Through, T] =
+      macro IndirectToQueryProviderMaterializeImpl[To, Through, T, IndirectToQueryProvider[To, Through, T]]
   }
 
   @implicitNotFound("Could not infer a join condition. This can be for the following reasons:\n" +
@@ -111,16 +122,20 @@ trait EntityCompanionComponent {
   }
 }
 
-object DirectToQueryProviderMaterializeImpl {
-  def apply[To : c.WeakTypeTag, T : c.WeakTypeTag, Res : c.WeakTypeTag](c: Context): c.Expr[Res] = {
+object IndirectToQueryProviderMaterializeImpl {
+  def apply[To : c.WeakTypeTag, Through : c.WeakTypeTag, T : c.WeakTypeTag, Res : c.WeakTypeTag]
+  (c: Context): c.Expr[Res] = {
     import c.universe._
 
+    val throughTableType = c.weakTypeOf[Through].typeSymbol.asClass
     val toTableType = c.weakTypeOf[To].typeSymbol.asClass
     val elementType = c.weakTypeOf[T].typeSymbol.asClass
 
     c.Expr(q"""
-    new DirectToQueryProvider[$toTableType, $elementType] {
-      def toQuery: Query[$toTableType, $elementType, Seq] = TableQuery[$toTableType]
+    new IndirectToQueryProvider[$toTableType, $throughTableType, $elementType] {
+      def toQuery: Query[($throughTableType, $toTableType), _ <: (_, $elementType), Seq] =
+        TableQuery[$throughTableType].join(TableQuery[$toTableType])
+          .on(DirectJoinConditionProvider.materialize[$throughTableType, $toTableType].joinCondition)
     }""")
   }
 }

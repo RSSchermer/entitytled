@@ -42,8 +42,7 @@ trait Model {
 
   object Movie extends EntityCompanion[Movies, Movie, MovieID] {
     val stars = toManyThrough[Stars, MoviesStars, Star](
-      TableQuery[MoviesStars] join TableQuery[Stars] on(_.starID === _.id),
-      _.id === _._1.movieID)
+      (m: Movies, t: (MoviesStars, Stars)) => m.id === t._1.movieID)
 
     val director = toOne[Directors, Director]
   }
@@ -71,8 +70,7 @@ trait Model {
 
   object Star extends EntityCompanion[Stars, Star, StarID] {
     val movies = toManyThrough[Movies, MoviesStars, Movie](
-      TableQuery[MoviesStars] join TableQuery[Movies] on(_.movieID === _.id),
-      _.id === _._1.starID)
+      (s: Stars, t: (MoviesStars, Movies)) => s.id === t._1.starID)
   }
   class Stars(tag: Tag) extends EntityTable[Star, StarID](tag, "STARS") {
     def id = column[StarID]("id", O.PrimaryKey, O.AutoInc)
