@@ -90,7 +90,7 @@ trait EntityRepositoryComponent {
   }
 
   trait TableQueryProvider[T <: Table[M], M] {
-    def tableQuery: Query[T, M, Seq]
+    val tableQuery: Query[T, M, Seq]
   }
 
   object TableQueryProvider {
@@ -108,7 +108,7 @@ object MaterializeTableQueryProviderImpl {
 
     c.Expr(q"""
     new TableQueryProvider[$tableType, $elementType] {
-      def tableQuery: Query[$tableType, $elementType, Seq] = TableQuery[$tableType]
+      val tableQuery: Query[$tableType, $elementType, Seq] = TableQuery[$tableType]
     }""")
   }
 }

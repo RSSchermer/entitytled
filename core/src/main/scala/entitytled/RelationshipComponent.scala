@@ -253,6 +253,11 @@ trait RelationshipComponent {
     def apply[From <: Table[_], To <: Table[_]]: (From, To) => Rep[Boolean] =
       macro DirectJoinConditionImpl[From, To, (From, To) => Rep[Boolean]]
   }
+
+  object IndirectJoinCondition {
+    def apply[From <: Table[_], Through <: Table[_], To <: Table[_]]: (From, (Through, To)) => Rep[Boolean] =
+      macro IndirectJoinConditionImpl[From, Through, To, (From, (Through, To)) => Rep[Boolean]]
+  }
 }
 
 trait JoinConditionMacroImpl {
@@ -315,6 +320,52 @@ object DirectJoinConditionImpl extends JoinConditionMacroImpl {
       c.Expr(q"""
         (f: $fromTableType, t: $toTableType) =>
           f.id === t.${toKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[From](c)}]
+      """)
+    }
+  }
+}
+
+object IndirectJoinConditionImpl extends JoinConditionMacroImpl {
+  def apply[From <: AbstractTable[_] : c.WeakTypeTag,
+            Through <: AbstractTable[_] : c.WeakTypeTag,
+            To <: AbstractTable[_] : c.WeakTypeTag,
+            Res : c.WeakTypeTag]
+  (c: Context): c.Expr[Res] = {
+    import c.universe._
+
+    val fromTableType = c.weakTypeOf[From].typeSymbol.asClass
+    val throughTableType = c.weakTypeOf[Through].typeSymbol.asClass
+    val toTableType = c.weakTypeOf[To].typeSymbol.asClass
+
+    val fromTableName = fromTableType.fullName
+    val throughTableName = throughTableType.fullName
+
+    val fromKeys = foreignKeys[From, To](c)
+    val throughKeys = foreignKeys[Through, From](c)
+
+    if (fromKeys.size > 1) {
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $fromTableName declares more than 1 foreign key to $throughTableName.")
+    } else if (throughKeys.size > 1) {
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $throughTableName declares more than 1 foreign key to $fromTableName.")
+    } else if (fromKeys.size + throughKeys.size > 1) {
+      c.abort(c.enclosingPosition,
+        s"Multiple candidate foreign keys: $throughTableName and $fromTableName both declare a foreign key to each other.")
+    } else if (fromKeys.size + throughKeys.size == 0) {
+      c.abort(c.enclosingPosition,
+        s"No candidate foreign key: $fromTableName and $throughTableName don't declare any foreign keys to each other.")
+    }
+
+    if (fromKeys.size == 1) {
+      c.Expr(q"""
+        (f: $fromTableType, t: ($throughTableType, $toTableType)) =>
+          f.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[Through](c)}] === t._1.id
+      """)
+    } else {
+      c.Expr(q"""
+        (f: $fromTableType, t: ($throughTableType, $toTableType)) =>
+          f.id === t._1.${throughKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[From](c)}]
       """)
     }
   }

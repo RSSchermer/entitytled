@@ -12,7 +12,7 @@ object BuildSettings {
   val buildSettings = typelevelDefaultSettings ++ Seq(
     organization       := "com.github.rsschermer",
     scalaVersion       := buildScalaVersion,
-    crossScalaVersions := Seq("2.10.4", "2.11.6"),
+    crossScalaVersions := Seq("2.10.5", "2.11.6"),
     scalacOptions      ++= Seq(
       "-feature",
       "-deprecation",
@@ -25,7 +25,7 @@ object BuildSettings {
 
 object Dependencies {
   val slick         = "com.typesafe.slick"  %%  "slick"           % "3.0.0"
-  val scalaz        = "org.scalaz"          %% "scalaz-core"      % "7.1.2"
+  val scalaz        = "org.scalaz"          %%  "scalaz-core"     % "7.1.2"
   val scalaTest     = "org.scalatest"       %%  "scalatest"       % "2.2.1"     % "test"
   val h2database    = "com.h2database"      %   "h2"              % "1.4.181"   % "test"
   val logback       = "ch.qos.logback"      %   "logback-classic" % "0.9.28"    % "test"
@@ -55,8 +55,8 @@ object EntitytledBuild extends Build {
           // in Scala 2.10, quasiquotes are provided by macro paradise
           case Some((2, 10)) =>
             libraryDependencies.value ++ Seq(
-              compilerPlugin("org.scalamacros" % "paradise" % "2.0.0" cross CrossVersion.full),
-              "org.scalamacros" %% "quasiquotes" % "2.0.0" cross CrossVersion.binary
+              compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full),
+              "org.scalamacros" %% "quasiquotes" % "2.0.1" cross CrossVersion.binary
             )
         }
       }

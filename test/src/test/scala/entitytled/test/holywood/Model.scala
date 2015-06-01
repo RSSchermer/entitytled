@@ -41,9 +41,7 @@ trait Model {
   }
 
   object Movie extends EntityCompanion[Movies, Movie, MovieID] {
-    val stars = toManyThrough[Stars, MoviesStars, Star](
-      (m: Movies, t: (MoviesStars, Stars)) => m.id === t._1.movieID)
-
+    val stars = toManyThrough[Stars, MoviesStars, Star]
     val director = toOne[Directors, Director]
   }
 
@@ -69,9 +67,9 @@ trait Model {
   }
 
   object Star extends EntityCompanion[Stars, Star, StarID] {
-    val movies = toManyThrough[Movies, MoviesStars, Movie](
-      (s: Stars, t: (MoviesStars, Movies)) => s.id === t._1.starID)
+    val movies = toManyThrough[Movies, MoviesStars, Movie]
   }
+
   class Stars(tag: Tag) extends EntityTable[Star, StarID](tag, "STARS") {
     def id = column[StarID]("id", O.PrimaryKey, O.AutoInc)
     def name = column[String]("name")
