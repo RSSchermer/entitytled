@@ -201,8 +201,8 @@ trait RelationshipComponent {
     def actionFor(id: I)(implicit ec: ExecutionContext): DBIOAction[Option[T], NoStream, Effect.Read] =
       queryFor(id).result.headOption
     
-    def include(includables: Includable[To, T]*): OneIncluding[From, To, E, I, T] =
-      new OneIncluding(this, includables)
+    def include(includables: Includable[To, T]*): ToOneWithIncludes[From, To, E, I, T] =
+      new ToOneWithIncludes(this, includables)
 
     def inclusionActionFor(query: Query[From, E, Seq])
                           (implicit ec: ExecutionContext)
@@ -230,8 +230,8 @@ trait RelationshipComponent {
     def actionFor(id: I)(implicit ec: ExecutionContext): DBIOAction[Seq[T], Streaming[T], Effect.Read] =
       queryFor(id).result
     
-    def include(includables: Includable[To, T]*): ManyIncluding[From, To, E, I, T] =
-      new ManyIncluding(this, includables)
+    def include(includables: Includable[To, T]*): ToManyWithIncludes[From, To, E, I, T] =
+      new ToManyWithIncludes(this, includables)
 
     def inclusionActionFor(query: Query[From, E, Seq])
                           (implicit ec: ExecutionContext)
@@ -336,8 +336,8 @@ trait RelationshipComponent {
     * @param includes     The includables that are to be eager-loaded onto the
     *                     relationship.
     */
-  class OneIncluding[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
-      override val relationship: Relationship[From, To, E, I, T, Option] with ToOneRelationship[From, To, E, I, T],
+  class ToOneWithIncludes[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
+      relationship: Relationship[From, To, E, I, T, Option],
       val includes: Seq[Includable[To, T]])
     extends WrappingRelationship[From, To, E, I, T, Option](relationship)
   {
@@ -350,8 +350,8 @@ trait RelationshipComponent {
     }
 
     override def include(includables: Includable[To, T]*)
-    : OneIncluding[From, To, E, I, T] =
-      new OneIncluding(relationship, includes ++ includables)
+    : ToOneWithIncludes[From, To, E, I, T] =
+      new ToOneWithIncludes(relationship, includes ++ includables)
 
     override def inclusionActionFor(query: Query[From, E, Seq])
                                    (implicit ec: ExecutionContext)
@@ -378,8 +378,8 @@ trait RelationshipComponent {
     * @param includes     The includables that are to be eager-loaded onto the
     *                     relationship.
     */
-  class ManyIncluding[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
-      override val relationship: Relationship[From, To, E, I, T, Seq] with ToManyRelationship[From, To, E, I, T],
+  class ToManyWithIncludes[From <: EntityTable[E, I], To <: Table[T], E <: Entity[E, I], I, T](
+      relationship: Relationship[From, To, E, I, T, Seq],
       val includes: Seq[Includable[To, T]])
     extends WrappingRelationship[From, To, E, I, T, Seq](relationship)
   {
@@ -392,8 +392,8 @@ trait RelationshipComponent {
     }
 
     override def include(includables: Includable[To, T]*)
-    : ManyIncluding[From, To, E, I, T] =
-      new ManyIncluding(relationship, includes ++ includables)
+    : ToManyWithIncludes[From, To, E, I, T] =
+      new ToManyWithIncludes(relationship, includes ++ includables)
 
     override def inclusionActionFor(query: Query[From, E, Seq])
                                    (implicit ec: ExecutionContext)
