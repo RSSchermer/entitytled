@@ -34,7 +34,7 @@ trait EntityComponent {
   abstract class Entity[E <: Entity[E, I], I]
   (implicit includes: Includes[E] = Includes(), includesSetter: IncludesSetter[E])
   {
-    type IdType = I
+    // TODO: explore statically typed includes with KList and singleton types
 
     /** The entity's unique ID.
       *
@@ -120,13 +120,13 @@ trait EntityComponent {
     * @tparam E The entity type this table represents.
     * @tparam I The entity's ID type.
     */
-  abstract class EntityTable[E <: Entity[E, I], I](
+  abstract class EntityTable[E <: Entity[E, I], I : BaseColumnType](
       tag: Tag,
       schemaName: Option[String],
-      tableName: String)(implicit val colType: BaseColumnType[I])
+      tableName: String)
     extends Table[E](tag, schemaName, tableName)
   {
-    def this(tag: Tag, tableName: String)(implicit mapping: BaseColumnType[I]) =
+    def this(tag: Tag, tableName: String) =
       this(tag, None, tableName)
 
     /** The entity table's ID column. */
@@ -207,7 +207,7 @@ trait EntityComponent {
     * @tparam E The type of the entity that owns the includes.
     */
   @implicitNotFound("Could not create an includes setter for entity type {E}. " +
-    "Did you declare {E} as a case class?")
+    "Did you make sure {E} is a case class?")
   trait IncludesSetter[E <: Entity[E, _]] {
     def withIncludes(instance: E, includes: Includes[E]): E
   }
