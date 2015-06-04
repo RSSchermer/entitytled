@@ -8,9 +8,11 @@ package entitytled
   */
 trait Entitytled extends DriverComponent
   with EntityComponent
-  with EntityBuilderComponent
+  with EntityActionBuilderComponent
   with EntityRepositoryComponent
   with RelationshipComponent
   with RelationshipRepComponent
-  with RelationshipRepConversionsComponent
   with EntityCompanionComponent
+  with EntityActionBuilderConversionsComponent
+  with RelationshipRepConversionsComponent
+  with EntityRepositoryConversionsComponent

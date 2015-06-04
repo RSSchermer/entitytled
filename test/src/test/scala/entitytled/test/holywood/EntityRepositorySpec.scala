@@ -34,7 +34,7 @@ class EntityRepositorySpec extends FunSpec with HolywoodSpec with Matchers {
       for {
         id <- Star.insert(star)
         _ <- Star.update(star.copy(id = Some(id), age = 74))
-        age <- TableQuery[Stars].filter(_.id === id).map(_.age).result.headOption
+        age <- Star.filter(_.id === id).map(_.age).result.headOption
       } yield {
         it("should have updated the age to 74") {
           age.get should be(74)
@@ -52,7 +52,7 @@ class EntityRepositorySpec extends FunSpec with HolywoodSpec with Matchers {
           Star(None, "Robert De Niro", 71)
         )
 
-        kevinSpacey <- TableQuery[Stars].filter(_.name === "Kevin Spacey").result.headOption
+        kevinSpacey <- Star.filter(_.name === "Kevin Spacey").result.headOption
         _ <- Star.delete(kevinSpacey.get.id.get)
         stars <- Star.all.result
       } yield {

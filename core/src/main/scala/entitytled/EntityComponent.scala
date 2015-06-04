@@ -34,6 +34,8 @@ trait EntityComponent {
   abstract class Entity[E <: Entity[E, I], I]
   (implicit includes: Includes[E] = Includes(), includesSetter: IncludesSetter[E])
   {
+    type IdType = I
+
     /** The entity's unique ID.
       *
       * An entity needs to be uniquely identifiable by this ID.

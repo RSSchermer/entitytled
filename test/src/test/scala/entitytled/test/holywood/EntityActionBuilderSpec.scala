@@ -5,7 +5,7 @@ import org.scalatest.{FunSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class EntityBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
+class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
 
   import driver.api._
 
@@ -27,9 +27,9 @@ class EntityBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
       )
 
       stars <- Star.all.result
-      starsWithMovies  <- Star.include(Star.movies).all.result
-      starsWithMoviesWithDirectors <- Star.include(Star.movies.include(Movie.director)).all.result
-      moviesWithDirectorAndStars <- Movie.include(Movie.director, Movie.stars).all.result
+      starsWithMovies  <- Star.all.include(Star.movies).result
+      starsWithMoviesWithDirectors <- Star.all.include(Star.movies.include(Movie.director)).result
+      moviesWithDirectorAndStars <- Movie.all.include(Movie.director, Movie.stars).result
       starsOlderThan65 <- Star.filter(_.age >= 65).result
       starsBetween65And70 <- Star.filter(_.age >= 65).filter(_.age <= 70).result
       starsByAgeAsc <- Star.sortBy(_.age.asc).result
@@ -37,10 +37,10 @@ class EntityBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
       starsByAgeAscTake2Drop1 <- Star.sortBy(_.age.asc).take(2).drop(1).result
       starsByAgeDesc <- Star.sortBy(_.age.desc).result
       spacey <- Star.one(spaceyID).result
-      spaceyWithMovies <- Star.include(Star.movies).one(spaceyID).result
-      spaceyWithMoviesWithDirector <- Star.include(Star.movies.include(Movie.director)).one(spaceyID).result
+      spaceyWithMovies <- Star.one(spaceyID).include(Star.movies).result
+      spaceyWithMoviesWithDirector <- Star.one(spaceyID).include(Star.movies.include(Movie.director)).result
       suspects <- Movie.one(usualSuspectsID).result
-      suspectsWithDirectorAndStars <- Movie.include(Movie.director, Movie.stars).one(usualSuspectsID).result
+      suspectsWithDirectorAndStars <- Movie.one(usualSuspectsID).include(Movie.director, Movie.stars).result
     } yield {
 
       describe("star list") {

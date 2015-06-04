@@ -1,6 +1,9 @@
 package entitytled
 
+import slick.lifted.WrappingQuery
+
 import scala.concurrent.ExecutionContext
+import scala.language.implicitConversions
 import scala.language.experimental.macros
 import scala.reflect.macros._
 
@@ -9,10 +12,10 @@ import entitytled.exception.MissingIDException
 /** Component grouping some declarations regarding entity repositories.
   *
   * Needs to be mixed in along with a [[DriverComponent]], an [[EntityComponent]]
-  * and a [[EntityBuilderComponent]].
+  * and a [[EntityActionBuilderComponent]].
   */
 trait EntityRepositoryComponent {
-  self: DriverComponent with EntityComponent with EntityBuilderComponent =>
+  self: DriverComponent with EntityComponent with EntityActionBuilderComponent =>
 
   import driver.api._
 
@@ -26,9 +29,10 @@ trait EntityRepositoryComponent {
     */
   class EntityRepository[T <: EntityTable[E, I], E <: Entity[E, I], I]
   (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T, E])
-    extends AbstractEntityCollectionBuilder[T, E, I]
   {
     val query: Query[T, E, Seq] = tqp.tableQuery
+
+    val all: Query[T, E, Seq] = query
 
     /** Returns a database action for inserting the given entity instance into
       * the database.
@@ -68,7 +72,7 @@ trait EntityRepositoryComponent {
       instance.id match {
         case Some(id) =>
           val modifiedInstance = beforeUpdate(beforeSave(instance))
-          one(id).query.update(modifiedInstance).map { _ =>
+          query.filter(_.id === id).update(modifiedInstance).map { _ =>
             afterUpdate(id, instance)
             afterSave(id, instance)
           }
@@ -85,7 +89,7 @@ trait EntityRepositoryComponent {
     : DBIOAction[Unit, NoStream, Effect.Write] = {
       beforeDelete(id)
 
-      one(id).query.delete.map(_ => afterDelete(id))
+      query.filter(_.id === id).delete.map(_ => afterDelete(id))
     }
 
     /** May be overriden to specify actions that should be taken before
@@ -173,6 +177,33 @@ trait EntityRepositoryComponent {
     implicit def materialize[T <: Table[M], M]: TableQueryProvider[T, M] =
       macro MaterializeTableQueryProviderImpl.apply[T, M, TableQueryProvider[T, M]]
   }
+}
+
+trait EntityRepositoryActionBuilderConversionComponent {
+  self: EntityComponent
+    with EntityRepositoryComponent
+    with EntityActionBuilderComponent
+  =>
+
+  implicit def repositoryToEntityActionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I]
+  (repository: EntityRepository[T, E, I]): EntityCollectionActionBuilder[T, E, I] =
+    new EntityCollectionActionBuilder[T, E, I](repository.query)
+}
+
+trait EntityRepositoryConversionsComponent
+  extends EntityRepositoryActionBuilderConversionComponent
+{
+  self: DriverComponent
+    with EntityComponent
+    with EntityRepositoryComponent
+    with EntityActionBuilderComponent
+  =>
+
+  import driver.api._
+
+  implicit def repositoryToQuery[T <: EntityTable[E, I], E <: Entity[E, I], I]
+  (repository: EntityRepository[T, E, I]): Query[T, E, Seq] =
+    repository.query
 }
 
 object MaterializeTableQueryProviderImpl {
