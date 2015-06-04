@@ -14,68 +14,66 @@ trait EntityActionBuilderComponent {
 
   import driver.api._
   
-  trait EntityActionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I, C[_]] {
+  trait EntityActionBuilder[T <: EntityTable[E, _], E <: Entity[E, _], C[_]] {
     val query: Query[T, E, Seq]
 
     val includes: List[Includable[T, E]]
 
-    def include(include: Includable[T, E]*): EntityActionBuilder[T, E, I, C]
-
-    def result(implicit ec: ExecutionContext): DBIOAction[C[E], NoStream, Effect.Read]
+    def include(include: Includable[T, E]*): EntityActionBuilder[T, E, C]
   }
 
   /** Used to build a collection of entities along with possible includables. */
-  class EntityCollectionActionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
+  class EntityCollectionActionBuilder[T <: EntityTable[E, _], E <: Entity[E, _]](
       val query: Query[T, E, Seq],
       val includes: List[Includable[T, E]] = List())
-    extends EntityActionBuilder[T, E, I, Seq] 
+    extends EntityActionBuilder[T, E, Seq]
   {
-    
-    def one(id: I)(implicit ev: BaseColumnType[I]): EntityInstanceActionBuilder[T, E, I] =
-      new EntityInstanceActionBuilder(query.filter(_.id === id), includes)
 
     /** Narrows the query to only those entities that satisfy the predicate. */
     def filter[C <: Rep[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C])
-    : EntityCollectionActionBuilder[T, E, I] = {
+    : EntityCollectionActionBuilder[T, E] = {
       new EntityCollectionActionBuilder(query.filter(f), includes)
     }
 
     /** Narrows the query to only those entities that do not satisfy the
       * predicate. */
     def filterNot[C <: Rep[_]](f: (T) => C)(implicit wt: CanBeQueryCondition[C])
-    : EntityCollectionActionBuilder[T, E, I] = {
+    : EntityCollectionActionBuilder[T, E] = {
       new EntityCollectionActionBuilder(query.filterNot(f), includes)
     }
 
     /** Sort this query according to a function which extracts the ordering
       * criteria from the entities. */
     def sortBy[C](f: (T) => C)(implicit arg0: (C) ⇒ Ordered)
-    : EntityCollectionActionBuilder[T, E, I] =
+    : EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query.sortBy(f), includes)
 
     /** Select the first `num` elements. */
-    def take(num: Int): EntityCollectionActionBuilder[T, E, I] =
+    def take(num: Int): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query.take(num), includes)
 
     /** Select all elements except the first `num` ones. */
-    def drop(num: Int): EntityCollectionActionBuilder[T, E, I] =
+    def drop(num: Int): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query.drop(num), includes)
 
     /** Include includables on the entities in the result set. */
-    def include(include: Includable[T, E]*): EntityCollectionActionBuilder[T, E, I] =
+    def include(include: Includable[T, E]*): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query, includes ++ include)
-
-    def result(implicit ec: ExecutionContext): DBIOAction[Seq[E], NoStream, Effect.Read] =
-      includes.foldLeft(query.result.map(_.toList))((a, i) => i.includeOn(a, query))
   }
 
-  class EntityInstanceActionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I](
+  implicit class EntityCollectionResultInvoker[T <: EntityTable[E, _], E <: Entity[E, _]]
+  (builder: EntityCollectionActionBuilder[T, E]) {
+    def result(implicit ec: ExecutionContext): DBIOAction[Seq[E], NoStream, Effect.Read] =
+      builder.includes.foldLeft(builder.query.result.map(_.toList))((a, i) => i.includeOn(a, builder.query))
+  }
+
+  class EntityInstanceActionBuilder[T <: EntityTable[E, _], E <: Entity[E, _]](
       val query: Query[T, E, Seq],
-      val includes: List[Includable[T, E]])
-    extends EntityActionBuilder[T, E, I, Option]
+      val includes: List[Includable[T, E]] = List())
+    extends EntityActionBuilder[T, E, Option]
   {
     /** Include includables on the entity instance. */
-    def include(include: Includable[T, E]*): EntityInstanceActionBuilder[T, E, I] =
+    def include(include: Includable[T, E]*): EntityInstanceActionBuilder[T, E] =
       new EntityInstanceActionBuilder(query, includes ++ include)
 
     def result(implicit ec: ExecutionContext): DBIOAction[Option[E], NoStream, Effect.Read] =
@@ -92,10 +90,10 @@ trait EntityActionBuilderConversionsComponent {
   import driver.api._
 
   implicit def queryToCollectionBuilder[T <: EntityTable[E, _], E <: Entity[E, _]]
-  (query: Query[T, E, Seq]): EntityCollectionActionBuilder[T, E, E#IdType] =
-    new EntityCollectionActionBuilder[T, E, E#IdType](query)
+  (query: Query[T, E, Seq]): EntityCollectionActionBuilder[T, E] =
+    new EntityCollectionActionBuilder[T, E](query)
 
-  implicit def actionBuilderToQuery[T <: EntityTable[E, I], E <: Entity[E, I], I, C[_]]
-  (actionBuilder: EntityActionBuilder[T, E, I, C]): Query[T, E, Seq] =
+  implicit def actionBuilderToQuery[T <: EntityTable[E, _], E <: Entity[E, _], C[_]]
+  (actionBuilder: EntityActionBuilder[T, E, C]): Query[T, E, Seq] =
     actionBuilder.query
 }

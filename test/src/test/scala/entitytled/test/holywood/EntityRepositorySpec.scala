@@ -14,7 +14,7 @@ class EntityRepositorySpec extends FunSpec with HolywoodSpec with Matchers {
     rollback {
       for {
         id <- Star.insert(newStar)
-        stars <- Star.all.result
+        stars <- Star.result
       } yield {
         it("should return a new MovieStarID") {
           id should not be None

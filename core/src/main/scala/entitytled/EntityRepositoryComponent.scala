@@ -1,6 +1,6 @@
 package entitytled
 
-import slick.lifted.WrappingQuery
+import slick.profile.FixedSqlStreamingAction
 
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
@@ -33,6 +33,11 @@ trait EntityRepositoryComponent {
     val query: Query[T, E, Seq] = tqp.tableQuery
 
     val all: Query[T, E, Seq] = query
+
+    val result: FixedSqlStreamingAction[Seq[E], E, Effect.Read] = query.result
+
+    def one(id: I): EntityInstanceActionBuilder[T, E] =
+      new EntityInstanceActionBuilder[T, E](query.filter(_.id ===id).take(1))
 
     /** Returns a database action for inserting the given entity instance into
       * the database.
@@ -186,8 +191,8 @@ trait EntityRepositoryActionBuilderConversionComponent {
   =>
 
   implicit def repositoryToEntityActionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (repository: EntityRepository[T, E, I]): EntityCollectionActionBuilder[T, E, I] =
-    new EntityCollectionActionBuilder[T, E, I](repository.query)
+  (repository: EntityRepository[T, E, I]): EntityCollectionActionBuilder[T, E] =
+    new EntityCollectionActionBuilder[T, E](repository.query)
 }
 
 trait EntityRepositoryConversionsComponent
