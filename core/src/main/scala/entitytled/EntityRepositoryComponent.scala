@@ -37,7 +37,7 @@ trait EntityRepositoryComponent {
     val result: FixedSqlStreamingAction[Seq[E], E, Effect.Read] = query.result
 
     def one(id: I): EntityInstanceActionBuilder[T, E] =
-      new EntityInstanceActionBuilder[T, E](query.filter(_.id ===id).take(1))
+      new EntityInstanceActionBuilder[T, E](query.filter(_.id === id).take(1))
 
     /** Returns a database action for inserting the given entity instance into
       * the database.
@@ -46,24 +46,14 @@ trait EntityRepositoryComponent {
       * @param ec       The execution context in which the action is to be
       *                 build.
       */
-    def insert(instance: E)(implicit ec: ExecutionContext)
-    : DBIOAction[I, NoStream, Effect.Write] = {
-      val modifiedInstance = beforeInsert(beforeSave(instance))
-
-      val action = instance.id match {
-        case Some(id) =>
-          (query += modifiedInstance).map(x => id)
-        case _ =>
-          query returning query.map(_.id) += modifiedInstance
+    def insert(instance: E)(implicit ec: ExecutionContext): DBIO[I] =
+      beforeSave(instance).flatMap(beforeInsert).flatMap { i => (i.id match {
+          case Some(id) =>
+            (query += i).map(x => id)
+          case _ =>
+            query returning query.map(_.id) += i
+        }).flatMap(id => afterSave(id, i) >> afterInsert(id, i) >> DBIO.successful(id))
       }
-
-      action.map { id =>
-        afterInsert(id, instance)
-        afterSave(id, instance)
-
-        id
-      }
-    }
 
     /** Returns a database action for updating the database record for the given
       * entity instance.
@@ -72,14 +62,11 @@ trait EntityRepositoryComponent {
       * @param ec       The execution context in which the action is to be
       *                 build.
       */
-    def update(instance: E)(implicit ec: ExecutionContext)
-    : DBIOAction[Unit, NoStream, Effect.Write] =
+    def update(instance: E)(implicit ec: ExecutionContext): DBIO[Unit] =
       instance.id match {
         case Some(id) =>
-          val modifiedInstance = beforeUpdate(beforeSave(instance))
-          query.filter(_.id === id).update(modifiedInstance).map { _ =>
-            afterUpdate(id, instance)
-            afterSave(id, instance)
+          beforeSave(instance).flatMap(beforeUpdate).flatMap { i =>
+            query.filter(_.id === id).update(i) >> afterSave(id, i) >> afterUpdate(id, i)
           }
         case _ => DBIO.failed(new MissingIDException)
       }
@@ -90,40 +77,36 @@ trait EntityRepositoryComponent {
       * @param id The ID of the entity to be deleted.
       * @param ec The execution context in which the action is to be build.
       */
-    def delete(id: I)(implicit ec: ExecutionContext)
-    : DBIOAction[Unit, NoStream, Effect.Write] = {
-      beforeDelete(id)
-
-      query.filter(_.id === id).delete.map(_ => afterDelete(id))
-    }
+    def delete(id: I)(implicit ec: ExecutionContext): DBIO[Unit] =
+      beforeDelete(id) >> query.filter(_.id === id).delete >> afterDelete(id)
 
     /** May be overriden to specify actions that should be taken before
       * inserting a new entity.
       *
       * @param instance The entity instance that is to be insterted.
       */
-    protected def beforeInsert(instance: E): E = instance
+    protected def beforeInsert(instance: E): DBIO[E] = DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken before
       * updating an entity.
       *
       * @param instance The entity instance that is to be updated.
       */
-    protected def beforeUpdate(instance: E): E = instance
+    protected def beforeUpdate(instance: E): DBIO[E] = DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken either before
       * inserting, or before updating an entity.
       *
       * @param instance The entity instance that is to be saved.
       */
-    protected def beforeSave(instance: E): E = instance
+    protected def beforeSave(instance: E): DBIO[E] = DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken before
       * deleting an entity.
       *
       * @param id The ID of entity instance that is to be deleted.
       */
-    protected def beforeDelete(id: I): Unit = ()
+    protected def beforeDelete(id: I): DBIO[Unit] = DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
       * inserting a new entity.
@@ -131,7 +114,7 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was inserted.
       * @param instance The entity instance that was inserted.
       */
-    protected def afterInsert(id: I, instance: E): Unit = ()
+    protected def afterInsert(id: I, instance: E): DBIO[Unit] = DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
       * updating an entity.
@@ -139,7 +122,7 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was updated.
       * @param instance The entity instance that was updated.
       */
-    protected def afterUpdate(id: I, instance: E): Unit = ()
+    protected def afterUpdate(id: I, instance: E): DBIO[Unit] = DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken either after
       * inserting, or after updating an entity.
@@ -147,14 +130,14 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was saved.
       * @param instance The entity instance that was saved.
       */
-    protected def afterSave(id: I, instance: E): Unit = ()
+    protected def afterSave(id: I, instance: E): DBIO[Unit] = DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
       * deleting an entity.
       *
       * @param id The ID of entity instance that was deleted.
       */
-    protected def afterDelete(id: I): Unit = ()
+    protected def afterDelete(id: I): DBIO[Unit] = DBIO.successful(())
   }
 
   /** Provides a table query for table T.
