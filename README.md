@@ -522,7 +522,8 @@ essentially equivalent to:
 ```scala
 val stars = toManyThrough[Stars, MoviesStars, Star](
   toQuery       = TableQuery[MoviesStars] join TableQuery[Stars] on(_.starID === _.id),
-  joinCondition = (m: Movies, t: (MovieStars, Stars)) => m.id === t._1.movieID)
+  joinCondition = (m: Movies, t: (MovieStars, Stars)) => m.id === t._1.movieID
+)
 ```
 
 With indirect relationships, the `toQuery` argument's type is a bit more 
@@ -549,7 +550,7 @@ relationships. Instead of simply joining the owner type to the target type, it
 has to join the owner type to this joined `(JoinType, TargetType)` pair:
  
 ```scala
-joinCondition = (m: Movies, t: (MovieStars, Stars)) => m.id === t._1.movieID)
+joinCondition = (m: Movies, t: (MovieStars, Stars)) => m.id === t._1.movieID
 ```
 
 If you don't specify the `toQuery` argument explicitly, Entitytled will attempt
@@ -636,14 +637,14 @@ result modifying operations (e.g. `filter`, `sortBy`, `map`, `take`, etc.). If,
 for example, you wanted to build a query for the top 10 movies with the highest 
 rating, you could do this:
 
-```
+```scala
 val topTenMoviesQuery = Movie.all.sortBy(_.rating.asc).take(10)
 ```
 
 Just as in Slick, calling `result` on an query will return the database I/O
 action:
 
-```
+```scala
 val topTenMoviesAction = topTenMoviesQuery.result
 ```
 
