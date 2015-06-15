@@ -30,12 +30,12 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
       starsWithMovies  <- Star.all.include(Star.movies).result
       starsWithMoviesWithDirectors <- Star.all.include(Star.movies.include(Movie.director)).result
       moviesWithDirectorAndStars <- Movie.all.include(Movie.director, Movie.stars).result
-      starsOlderThan65 <- Star.filter(_.age >= 65).result
-      starsBetween65And70 <- Star.filter(_.age >= 65).filter(_.age <= 70).result
-      starsByAgeAsc <- Star.sortBy(_.age.asc).result
-      starsByAgeAscTake2 <- Star.sortBy(_.age.asc).take(2).result
-      starsByAgeAscTake2Drop1 <- Star.sortBy(_.age.asc).take(2).drop(1).result
-      starsByAgeDesc <- Star.sortBy(_.age.desc).result
+      starsOlderThan65 <- Star.all.filter(_.age >= 65).result
+      starsBetween65And70 <- Star.all.filter(_.age >= 65).filter(_.age <= 70).result
+      starsByAgeAsc <- Star.all.sortBy(_.age.asc).result
+      starsByAgeAscTake2 <- Star.all.sortBy(_.age.asc).take(2).result
+      starsByAgeAscTake2Drop1 <- Star.all.sortBy(_.age.asc).take(2).drop(1).result
+      starsByAgeDesc <- Star.all.sortBy(_.age.desc).result
       spacey <- Star.one(spaceyID).result
       spaceyWithMovies <- Star.one(spaceyID).include(Star.movies).result
       spaceyWithMoviesWithDirector <- Star.one(spaceyID).include(Star.movies.include(Movie.director)).result

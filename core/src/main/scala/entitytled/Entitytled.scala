@@ -15,4 +15,3 @@ trait Entitytled extends DriverComponent
   with EntityCompanionComponent
   with EntityActionBuilderConversionsComponent
   with RelationshipRepConversionsComponent
-  with EntityRepositoryConversionsComponent

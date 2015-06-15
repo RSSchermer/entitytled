@@ -167,53 +167,6 @@ trait EntityRepositoryComponent {
   }
 }
 
-/** Component containing an implicit conversion from a repository to an
-  * entity collection action builder.
-  *
-  * Should be mixed in along with an [[EntityComponent]], an [[EntityRepositoryComponent]]
-  * and an [[EntityActionBuilderComponent]].
-  *
-  * This component is meant to be extended by [[EntityRepositoryConversionsComponent]]
-  * and exists to resolve ambigouity with the explicit conversion from a
-  * repository to a query. Conversions defined in subclasses have priority over
-  * conversions defined in superclasses, which in this case means that the
-  * conversion from a repository to a query will take priority over the
-  * conversion from a repository to an entity action builder.
-  */
-trait EntityRepositoryActionBuilderConversionComponent {
-  self: EntityComponent
-    with EntityRepositoryComponent
-    with EntityActionBuilderComponent
-  =>
-
-  implicit def repositoryToEntityActionBuilder[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (repository: EntityRepository[T, E, I]): EntityCollectionActionBuilder[T, E] =
-    new EntityCollectionActionBuilder[T, E](repository.query)
-}
-
-/** Component containing implicit conversions from a repository to a query or
-  * an entity action builder, where the query conversion has priority over the
-  * entity action builder conversion.
-  *
-  * Should be mixed in along with an [[EntityComponent]], an [[EntityRepositoryComponent]]
-  * and an [[EntityActionBuilderComponent]].
-  */
-trait EntityRepositoryConversionsComponent
-  extends EntityRepositoryActionBuilderConversionComponent
-{
-  self: DriverComponent
-    with EntityComponent
-    with EntityRepositoryComponent
-    with EntityActionBuilderComponent
-  =>
-
-  import driver.api._
-
-  implicit def repositoryToQuery[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (repository: EntityRepository[T, E, I]): Query[T, E, Seq] =
-    repository.query
-}
-
 object MaterializeTableQueryProviderImpl {
   def apply[T : c.WeakTypeTag, M : c.WeakTypeTag, Res : c.WeakTypeTag]
   (c: Context): c.Expr[Res] = {
