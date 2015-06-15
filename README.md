@@ -759,13 +759,15 @@ val director: Option[Director] = someMovie.director
 val stars: Seq[Star] = someMovie.stars
 ```
 
-This is however achieved through implicit conversions. In reality, eager-loaded
+This behaviour is achieved through implicit conversions. In reality, eager-loaded
 relationship values are wrapped in `OneFetched` or `ManyFetched` for 'to one' 
 and 'to many' relationships respectively; relationships that have not yet been 
 loaded are represented by `OneUnfetched` or `ManyUnfetched` for 'to one' and 
 'to many' relationships respectively. When implicitly converting fetched 
 relationship values, the wrapped value is used; when implicitly converting
-unfetched values, a query is executed to retrieve the value.
+unfetched values, a query is executed to retrieve the value. For these implicit 
+conversions to work, there needs to be both an implicit database definition and 
+an implicit execution context in scope. 
 
 Executing an additional query may not always be desirable. You can pattern
 match for a fetched value to make the decision to execute an additional query
