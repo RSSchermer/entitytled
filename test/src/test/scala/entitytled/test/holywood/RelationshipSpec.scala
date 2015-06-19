@@ -61,7 +61,7 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
             it("should have fetched Bryan Singer for The Usual Suspects") {
               val usualSuspects = kevinSpaceyMoviesWithDirector.find(_.title == "The Usual Suspects").get
 
-              usualSuspects.director.getValue.get.name should be("Bryan Singer")
+              usualSuspects.director.get.name should be("Bryan Singer")
             }
           }
         }

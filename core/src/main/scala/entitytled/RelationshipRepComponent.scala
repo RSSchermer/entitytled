@@ -43,40 +43,20 @@ trait RelationshipRepComponent {
       */
     val isFetched: Boolean
 
-    /** Returns the represented value if it was already fetched into memory,
-      * error otherwise.
+    /** Database action that will result in the represented value.
       *
-      * @throws NoSuchElementException When called on relationship value
-      *                                representations for values that have not
-      *                                yet been fetched into memory.
+      * Will execute a query for unfetched values, or simply wrap the value
+      * in a database I/O action for fetched values (without executing an
+      * additional value).
       */
-    def getValue: C[T]
+    def valueAction(implicit ec: ExecutionContext): DBIOAction[C[T], NoStream, Effect.Read]
 
-    /** Will fetch the represented value from persistant storage.
+    /** Treats this represented value as unfetched.
       *
-      * @param db          The database definition to be used for executing the
-      *                    request.
-      * @param ec          The execution context for executing the database the
-      *                    request.
-      * @param maxDuration The maximum time execution may take before failing.
+      * Treats this represented value as unfetched, which means the value action
+      * will execute a query, regardless of whether the value was prefetched.
       */
-    def fetchValue(implicit db: Database,
-                   ec: ExecutionContext,
-                   maxDuration: Duration): C[T]
-
-    /** Will return the represented value from memory for fetched values or
-      * fetch it otherwise.
-      *
-      * @param db          The database definition to be used for executing the
-      *                    request.
-      * @param ec          The execution context for executing the database the
-      *                    request.
-      * @param maxDuration The maximum time execution may take before failing.
-      */
-    def getOrFetchValue(implicit db: Database,
-                        ec: ExecutionContext,
-                        maxDuration: Duration = 10 seconds): C[T] =
-      if (isFetched) getValue else fetchValue
+    def asUnfetched: RelationshipRep[E, I, T, C] with Unfetched[T, C]
   }
 
   /** Trait that can be mixed into a [[RelationshipRep]] for representing the
@@ -93,7 +73,8 @@ trait RelationshipRepComponent {
     
     val isFetched: Boolean = true
 
-    def getValue: C[T] = value
+    def valueAction(implicit ec: ExecutionContext): DBIOAction[C[T], NoStream, Effect.Read] =
+      DBIO.successful(value)
   }
 
   /** Trait that can be mixed into a [[RelationshipRep]] for representing the
@@ -106,25 +87,12 @@ trait RelationshipRepComponent {
     self: RelationshipRep[_ <: Entity[_, _], _, _, C] =>
 
     val isFetched: Boolean = false
-
-    def getValue: C[T] = throw new NoSuchElementException("Unfetched.get")
   }
 
   /** Represents the value of a 'to one' relationship for a specific owner
     * instance.
     */
-  sealed trait One[E <: Entity[E, I], I, T]
-    extends RelationshipRep[E, I, T, Option]
-  {
-    def fetchValue(implicit db: Database,
-                   ec: ExecutionContext,
-                   maxDuration: Duration = 10 seconds)
-    : Option[T] = ownerId match {
-      case Some(id) =>
-        Await.result(db.run(relationship.actionFor(id)), maxDuration)
-      case _ => None
-    }
-  }
+  sealed trait One[E <: Entity[E, I], I, T] extends RelationshipRep[E, I, T, Option]
 
   /** Represents a fetched value of a 'to one' relationship for a specific owner
     * instance.
@@ -134,6 +102,10 @@ trait RelationshipRepComponent {
       value: Option[T] = None,
       ownerId: Option[I] = None)
     extends One[E, I, T] with Fetched[T, Option]
+  {
+    def asUnfetched: OneUnfetched[E, I, T] =
+      OneUnfetched(relationship, ownerId)
+  }
 
   /** Represents an unfetched value of a 'to one' relationship for a specific
     * owner instance.
@@ -142,22 +114,22 @@ trait RelationshipRepComponent {
       relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option],
       ownerId: Option[I])
     extends One[E, I, T] with Unfetched[T, Option]
+  {
+    def valueAction(implicit ec: ExecutionContext): DBIOAction[Option[T], NoStream, Effect.Read] =
+      ownerId match {
+        case Some(id) =>
+          relationship.actionFor(id)
+        case _ =>
+          DBIO.successful(None)
+      }
+
+    def asUnfetched: OneUnfetched[E, I, T] = this
+  }
 
   /** Represents the value of a 'to many' relationship for a specific owner
     * instance.
     */
-  sealed trait Many[E <: Entity[E, I], I, T]
-    extends RelationshipRep[E, I, T, Seq]
-  {
-    def fetchValue(implicit db: Database,
-                   ec: ExecutionContext,
-                   maxDuration: Duration = 10 seconds)
-    : Seq[T] = ownerId match {
-      case Some(id) =>
-        Await.result(db.run(relationship.actionFor(id)), maxDuration)
-      case _ => List()
-    }
-  }
+  sealed trait Many[E <: Entity[E, I], I, T] extends RelationshipRep[E, I, T, Seq]
 
   /** Represents a fetched (in memory) value of a 'to many' relationship for a
     * specific owner instance.
@@ -167,6 +139,10 @@ trait RelationshipRepComponent {
       value: Seq[T] = Seq(),
       ownerId: Option[I] = None)
     extends Many[E, I, T] with Fetched[T, Seq]
+  {
+    def asUnfetched: ManyUnfetched[E, I, T] =
+      ManyUnfetched(relationship, ownerId)
+  }
 
   /** Represents a unfetched value of a 'to many' relationship for a specific
     * owner instance.
@@ -175,6 +151,17 @@ trait RelationshipRepComponent {
       relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq],
       ownerId: Option[I])
     extends Many[E, I, T] with Unfetched[T, Seq]
+  {
+    def valueAction(implicit ec: ExecutionContext): DBIOAction[Seq[T], NoStream, Effect.Read] =
+      ownerId match {
+        case Some(id) =>
+          relationship.actionFor(id)
+        case _ =>
+          DBIO.successful(Seq())
+      }
+
+    def asUnfetched: ManyUnfetched[E, I, T] = this
+  }
 }
 
 /** Component declaring implicit conversions for relationship value
@@ -185,36 +172,12 @@ trait RelationshipRepConversionsComponent {
 
   import driver.api._
 
-  /** Converts relationship representation's that represent a single value into
-    * the represented value.
+  /** Converts relationship value representation into the related value it is
+    * representing.
     *
-    * Converts relationship representation's that represent a single value into
-    * the represented value, either by using the in-memory value for values
-    * that were already fetched, or executing a database query.
-    *
-    * @param rep The relationship value representation to be converted.
-    * @param db  Database definition to be used for executing a query to
-    *            retrieve unfetched values.
-    * @param ec  Execution context for running a database query.
-    *
-    * @tparam E The represented entity's type.
-    * @tparam I The represented entity's ID type.
-    * @tparam T The relationship's target type.
-    *
-    * @return The value represented by the relationship value representation.
-    */
-  implicit def oneRepToValue[E <: Entity[E, I], I, T]
-  (rep: One[E, I, T])
-  (implicit db: Database, ec: ExecutionContext)
-  : Option[T] =
-    rep.getOrFetchValue
-
-  /** Converts relationship representation's that represent a collection of
-    * value into the represented values.
-    *
-    * Converts relationship representation's that represent a collection of
-    * values into the represented values, either by using the in-memory values
-    * for values that were already fetched, or executing a database query.
+    * Converts relationship value representation into the related value it is
+    * representing, either by using the in-memory values for values that were
+    * already fetched, or executing a database query.
     *
     * @param rep The relationship value representation to be converted.
     * @param db  Database definition to be used for executing a query to
@@ -224,12 +187,13 @@ trait RelationshipRepConversionsComponent {
     * @tparam E The represented entity's type.
     * @tparam I The represented entity's ID type.
     * @tparam T The relationship's target type.
+    * @tparam C The value container type.
     *
     * @return The value represented by the relationship value representation.
     */
-  implicit def manyRepToValue[E <: Entity[E, I], I, T]
-  (rep: Many[E, I, T])
+  implicit def relationshipRepToValue[E <: Entity[E, I], I, T, C[_]]
+  (rep: RelationshipRep[E, I, T, C])
   (implicit db: Database, ec: ExecutionContext)
-  : Seq[T] =
-    rep.getOrFetchValue
+  : C[T] =
+    Await.result(db.run(rep.valueAction), 5 seconds)
 }
