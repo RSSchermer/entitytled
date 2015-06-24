@@ -39,6 +39,7 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
       spacey <- Star.one(spaceyID).result
       spaceyWithMovies <- Star.one(spaceyID).include(Star.movies).result
       spaceyWithMoviesWithDirector <- Star.one(spaceyID).include(Star.movies.include(Movie.director)).result
+      spaceyWithDirectors <- Star.one(spaceyID).include(Star.directors).result
       suspects <- Movie.one(usualSuspectsID).result
       suspectsWithDirectorAndStars <- Movie.one(usualSuspectsID).include(Movie.director, Movie.stars).result
     } yield {
@@ -197,6 +198,20 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
           val suspects = spaceyWithMoviesWithDirector.get.movies.find(_.title == "The Usual Suspects").get
 
           suspects.director.get.name should be("Bryan Singer")
+        }
+      }
+
+      describe("Kevin Spacey with director (composed relationship) eager-loading") {
+        it("should have fetched the directors for Kevin Spacey") {
+          spaceyWithDirectors.get.directors shouldBe a[ManyFetched[_, _, _]]
+        }
+
+        it("should have fetched 1 director") {
+          spaceyWithDirectors.get.directors.length should be(1)
+        }
+
+        it("should have fetched Bryan Singer") {
+          spaceyWithDirectors.get.directors.map(_.name) should contain("Bryan Singer")
         }
       }
 

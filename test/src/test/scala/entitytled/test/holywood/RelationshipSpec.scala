@@ -17,21 +17,26 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
 
       singerID <- (directors returning directors.map(_.id)) += Director(None, "Bryan Singer")
       scorseseID <- (directors returning directors.map(_.id)) += Director(None, "Martin Scorsese")
+      mendesID <- (directors returning directors.map(_.id)) += Director(None, "Sam Mendes")
 
       usualSuspectsID <- (movies returning movies.map(_.id)) += Movie(None, "The Usual Suspects", singerID)
       goodfellasID <- (movies returning movies.map(_.id)) += Movie(None, "Goodfellas", scorseseID)
+      americanBeautyID <- (movies returning movies.map(_.id)) += Movie(None, "American Beauty", mendesID)
 
       _ <- TableQuery[MoviesStars] ++= Seq(
         (usualSuspectsID, spaceyID),
-        (goodfellasID, deNiroID)
+        (goodfellasID, deNiroID),
+        (americanBeautyID, spaceyID)
       )
 
       usualSuspectsDirector <- Movie.director.actionFor(usualSuspectsID)
       kevinSpaceyMovies <- Star.movies.queryFor(spaceyID).result
       kevinSpaceyMoviesCount <- Star.movies.queryFor(spaceyID).length.result
       kevinSpaceyMoviesWithDirector <- Star.movies.include(Movie.director).actionFor(spaceyID)
-//      kevinSpaceyDirectors <- Star.directors.queryFor(spaceyID).result
-//      kevinSpaceyDirectorsCount <- Star.directors.queryFor(spaceyID).length.result
+      kevinSpaceyDirectors <- Star.directors.queryFor(spaceyID).result
+      kevinSpaceyDirectorsCount <- Star.directors.queryFor(spaceyID).length.result
+      bryanSingerStars <- Director.stars.queryFor(singerID).result
+      bryanSingerStarsCount <- Director.stars.queryFor(singerID).length.result
     } yield {
       describe("direct relationships") {
         describe("'to one' relationships") {
@@ -46,12 +51,16 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
       describe("indirect relationships") {
         describe("'to many' relationships") {
           describe("movies for Kevin Spacey") {
-            it("should return 1 movie") {
-              kevinSpaceyMoviesCount should be(1)
+            it("should return 2 movies") {
+              kevinSpaceyMoviesCount should be(2)
             }
 
             it("should contain The Usual Suspects") {
               kevinSpaceyMovies.map(_.title) should contain("The Usual Suspects")
+            }
+
+            it("should contain American Beauty") {
+              kevinSpaceyMovies.map(_.title) should contain("American Beauty")
             }
           }
 
@@ -65,21 +74,41 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
 
               usualSuspects.director.get.name should be("Bryan Singer")
             }
+
+            it("should have fetched Sam Mendes for American Beauty") {
+              val usualSuspects = kevinSpaceyMoviesWithDirector.find(_.title == "American Beauty").get
+
+              usualSuspects.director.get.name should be("Sam Mendes")
+            }
           }
         }
       }
 
-//      describe("composed relationships") {
-//        describe("directors for Kevin Spacey") {
-//          it("should return 1 director") {
-//            kevinSpaceyDirectorsCount should be(1)
-//          }
-//
-//          it("should contain Bryan Singer") {
-//            kevinSpaceyDirectors.map(_.name) should contain("Bryan Singer")
-//          }
-//        }
-//      }
+      describe("composed relationships") {
+        describe("directors for Kevin Spacey") {
+          it("should return 2 directors") {
+            kevinSpaceyDirectorsCount should be(2)
+          }
+
+          it("should contain Bryan Singer") {
+            kevinSpaceyDirectors.map(_.name) should contain("Bryan Singer")
+          }
+
+          it("should contain Sam Mendes") {
+            kevinSpaceyDirectors.map(_.name) should contain("Sam Mendes")
+          }
+        }
+
+        describe("stars for Bryan Singer") {
+          it("should return 1 star") {
+            bryanSingerStarsCount should be(1)
+          }
+
+          it("should contain Kevin Spacey") {
+            bryanSingerStars.map(_.name) should contain("Kevin Spacey")
+          }
+        }
+      }
     }
   }
 }
