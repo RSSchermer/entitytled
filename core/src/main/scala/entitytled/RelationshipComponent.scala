@@ -67,6 +67,12 @@ trait RelationshipComponent {
       */
     def queryFor(id: I): Query[To, T, Seq]
 
+    /** Returns a query for all the owned relations belonging all the owner
+      * entities with retrieved by the given query.
+      *
+      * @param query The query for owner entities for which to build a query for
+      *              the owned relations.
+      */
     def queryFor(query: Query[From, E, Seq]): Query[To, T, Seq]
 
     /** Returns a database action for retrieving the owned relations belong to
@@ -114,6 +120,14 @@ trait RelationshipComponent {
       */
     def innerJoinFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq]
 
+    /** Expands a join query from an origin relation to the owner relation, into
+      * a join query from that origin relation to the target relation.
+      *
+      * @param query A join query from the origin relation to the owner relation.
+      *
+      * @tparam W The origin relation's table type.
+      * @tparam O The origin relation's row type.
+      */
     def expandJoin[W <: Table[O], O](query: Query[(W, From), (O, E), Seq]): Query[(W, To), (O, T), Seq]
 
     /** Returns a database action that will result in a map of owner entities
