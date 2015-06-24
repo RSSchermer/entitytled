@@ -12,6 +12,7 @@ trait Entitytled extends DriverComponent
   with EntityRepositoryComponent
   with RelationshipComponent
   with RelationshipRepComponent
+  with RelationshipCompositionComponent
   with EntityCompanionComponent
   with EntityActionBuilderConversionsComponent
   with RelationshipRepConversionsComponent

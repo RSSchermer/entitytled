@@ -15,10 +15,12 @@ trait Model {
     extends Entity[Director, DirectorID]
   {
     val movies = many(Director.movies)
+    val stars = many(Director.movies compose Movie.stars)
   }
 
   object Director extends EntityCompanion[Directors, Director, DirectorID] {
     val movies = toMany[Movies, Movie]
+    //val stars = Director.movies compose Movie.stars
   }
 
   class Directors(tag: Tag) extends EntityTable[Director, DirectorID](tag, "DIRECTORS") {
@@ -64,10 +66,12 @@ trait Model {
     extends Entity[Star, StarID]
   {
     val movies = many(Star.movies)
+    val directors = many(Star.movies compose Movie.director)
   }
 
   object Star extends EntityCompanion[Stars, Star, StarID] {
     val movies = toManyThrough[Movies, MoviesStars, Movie]
+    //val directors = Star.movies compose Movie.director
   }
 
   class Stars(tag: Tag) extends EntityTable[Star, StarID](tag, "STARS") {

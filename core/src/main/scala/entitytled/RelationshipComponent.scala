@@ -67,6 +67,8 @@ trait RelationshipComponent {
       */
     def queryFor(id: I): Query[To, T, Seq]
 
+    def queryFor(query: Query[From, E, Seq]): Query[To, T, Seq]
+
     /** Returns a database action for retrieving the owned relations belong to
       * the owner entity with the given ID.
       *
@@ -110,7 +112,9 @@ trait RelationshipComponent {
       * @param query Query for owner entities on which the set of owned relations
       *              is to be joined.
       */
-    def inclusionQueryFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq]
+    def innerJoinFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq]
+
+    def expandJoin[W <: Table[O], O](query: Query[(W, From), (O, E), Seq]): Query[(W, To), (O, T), Seq]
 
     /** Returns a database action that will result in a map of owner entities
       * to their owned values for this relationship.
@@ -150,15 +154,23 @@ trait RelationshipComponent {
     def queryFor(id: I): Query[To, T, Seq] =
       fromQuery.filter(_.id === id).join(toQuery).on(joinCondition).map(_._2)
 
-    def inclusionQueryFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
+    def queryFor(query: Query[From, E, Seq]): Query[To, T, Seq] =
+      query.join(toQuery).on(joinCondition).map(_._2)
+
+    def innerJoinFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
       query.join(toQuery).on(joinCondition)
+
+    def expandJoin[W <: Table[O], O](query: Query[(W, From), (O, E), Seq]): Query[(W, To), (O, T), Seq] =
+      query.join(toQuery)
+        .on((x: (W, From), t: To) => joinCondition.apply(x._2, t))
+        .map(x => (x._1._1, x._2))
   }
 
   /** Base class for indirect relationships (with a join-table).
     *
     * @tparam Through The join-table's type.
     */
-  abstract class ThroughRelationship[From <: EntityTable[E, I], Through <: Table[_], To <: Table[T], E <: Entity[E, I], I, T, +C[_]]
+  abstract class IndirectRelationship[From <: EntityTable[E, I], Through <: Table[_], To <: Table[T], E <: Entity[E, I], I, T, +C[_]]
   (implicit mapping: BaseColumnType[I])
     extends Relationship[From, To, E, I, T, C]
   {
@@ -180,8 +192,16 @@ trait RelationshipComponent {
     def queryFor(id: I): Query[To, T, Seq] =
       fromQuery.filter(_.id === id).join(toQuery).on(joinCondition).map(_._2._2)
 
-    def inclusionQueryFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
+    def queryFor(query: Query[From, E, Seq]): Query[To, T, Seq] =
+      query.join(toQuery).on(joinCondition).map(_._2._2)
+
+    def innerJoinFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
       query.join(toQuery).on(joinCondition).map(x => (x._1, x._2._2))
+
+    def expandJoin[W <: Table[O], O](query: Query[(W, From), (O, E), Seq]): Query[(W, To), (O, T), Seq] =
+      query.join(toQuery)
+        .on((x: (W, From), t: (Through, To)) => joinCondition.apply(x._2, t))
+        .map(x => (x._1._1, x._2._2))
   }
 
   /** Provides a partial implementation of [[Relationship]] for 'to one'
@@ -207,7 +227,7 @@ trait RelationshipComponent {
     def inclusionActionFor(query: Query[From, E, Seq])
                           (implicit ec: ExecutionContext)
     : DBIOAction[Map[E, Option[T]], NoStream, Effect.Read] = {
-      val res = inclusionQueryFor(query).result
+      val res = innerJoinFor(query).result
       res.map(_.groupBy(_._1).map(x => (x._1, x._2.map(_._2).headOption)))
     }
   }
@@ -235,7 +255,7 @@ trait RelationshipComponent {
     def inclusionActionFor(query: Query[From, E, Seq])
                           (implicit ec: ExecutionContext)
     : DBIOAction[Map[E, Seq[T]], NoStream, Effect.Read] = {
-      val res = inclusionQueryFor(query).result
+      val res = innerJoinFor(query).result
       res.map(_.groupBy(_._1).map(x => (x._1, x._2.map(_._2))))
     }
 
@@ -274,7 +294,7 @@ trait RelationshipComponent {
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[(Through, To), _ <: (_, T), Seq],
       val joinCondition: (From, (Through, To)) => Rep[Boolean])(implicit mapping: BaseColumnType[I])
-    extends ThroughRelationship[From, Through, To, E, I, T, Option]
+    extends IndirectRelationship[From, Through, To, E, I, T, Option]
     with ToOneRelationship[From, To, E, I, T]
 
   /** Represents an indirect (with a join-table) 'to many' relationship.
@@ -286,7 +306,7 @@ trait RelationshipComponent {
       val fromQuery: Query[From, E, Seq],
       val toQuery: Query[(Through, To), _ <: (_, T), Seq],
       val joinCondition: (From, (Through, To)) => Rep[Boolean])(implicit mapping: BaseColumnType[I])
-    extends ThroughRelationship[From, Through, To, E, I, T, Seq]
+    extends IndirectRelationship[From, Through, To, E, I, T, Seq]
     with ToManyRelationship[From, To, E, I, T]
 
   /** Base class for wrapping relationships.
@@ -301,6 +321,9 @@ trait RelationshipComponent {
     def queryFor(id: I): Query[To, T, Seq] =
       relationship.queryFor(id)
 
+    def queryFor(query: Query[From, E, Seq]): Query[To, T, Seq] =
+      relationship.queryFor(query)
+
     def actionFor(id: I)(implicit ec: ExecutionContext)
     : DBIOAction[C[T], NoStream, Effect.Read] =
       relationship.actionFor(id)
@@ -308,8 +331,11 @@ trait RelationshipComponent {
     def include(includables: Includable[To, T]*): Relationship[From, To, E, I, T, C] =
       relationship.include(includables:_*)
 
-    def inclusionQueryFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
-      relationship.inclusionQueryFor(query)
+    def innerJoinFor(query: Query[From, E, Seq]): Query[(From, To), (E, T), Seq] =
+      relationship.innerJoinFor(query)
+
+    def expandJoin[W <: Table[O], O](query: Query[(W, From), (O, E), Seq]): Query[(W, To), (O, T), Seq] =
+      relationship.expandJoin(query)
 
     def inclusionActionFor(query: Query[From, E, Seq])
                           (implicit ec: ExecutionContext)
@@ -355,7 +381,7 @@ trait RelationshipComponent {
     override def inclusionActionFor(query: Query[From, E, Seq])
                                    (implicit ec: ExecutionContext)
     : DBIOAction[Map[E, Option[T]], NoStream, Effect.Read] = {
-      val inclusionQuery = inclusionQueryFor(query)
+      val inclusionQuery = innerJoinFor(query)
       val result = inclusionQuery.result.map(_.toMap)
       val withIncludes = includes.foldLeft(result) { (a, i) =>
         i.includeOn[({type λ[α] = Map[E, α]})#λ](a, inclusionQuery.map(_._2))
@@ -397,7 +423,7 @@ trait RelationshipComponent {
     override def inclusionActionFor(query: Query[From, E, Seq])
                                    (implicit ec: ExecutionContext)
     : DBIOAction[Map[E, Seq[T]], NoStream, Effect.Read] = {
-      val inclusionQuery = inclusionQueryFor(query)
+      val inclusionQuery = innerJoinFor(query)
       val result = inclusionQuery.result.map(_.toMap)
       val withIncludes = includes.foldLeft(result) { (a, i) =>
         i.includeOn[({type λ[α] = Map[E, α]})#λ](a, inclusionQuery.map(_._2))

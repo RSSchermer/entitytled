@@ -30,6 +30,8 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
       kevinSpaceyMovies <- Star.movies.queryFor(spaceyID).result
       kevinSpaceyMoviesCount <- Star.movies.queryFor(spaceyID).length.result
       kevinSpaceyMoviesWithDirector <- Star.movies.include(Movie.director).actionFor(spaceyID)
+//      kevinSpaceyDirectors <- Star.directors.queryFor(spaceyID).result
+//      kevinSpaceyDirectorsCount <- Star.directors.queryFor(spaceyID).length.result
     } yield {
       describe("direct relationships") {
         describe("'to one' relationships") {
@@ -66,6 +68,18 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
           }
         }
       }
+
+//      describe("composed relationships") {
+//        describe("directors for Kevin Spacey") {
+//          it("should return 1 director") {
+//            kevinSpaceyDirectorsCount should be(1)
+//          }
+//
+//          it("should contain Bryan Singer") {
+//            kevinSpaceyDirectors.map(_.name) should contain("Bryan Singer")
+//          }
+//        }
+//      }
     }
   }
 }
