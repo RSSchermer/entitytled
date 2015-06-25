@@ -599,13 +599,15 @@ complete the full many-to-many relationship.
 
 You may wish to define relationships that span across several tables. One option
 is to use an indirect relationship for this with a custom `toQuery`. If, for
-example, we wanted to define a relationship from stars to directors via
-the movies they both worked on, we could add the following relationship 
+example, you want to define a relationship from stars to directors, via the 
+movies they're both related to, you could add the following relationship 
 definition to the `Star` companion object:
 
 ```scala
 object Star extends EntityCompanion[Stars, Star, Long] {
   val movies = toManyThrough[Movies, MoviesStars, Movie]
+  
+  // Relationship with director using an indirect relationship with a custom toQuery
   val directors = toManyThrough[Directors, MoviesStars, Director](
     toQuery = TableQuery[MoviesStars].join(TableQuery[Movies]).on(_.movieID === _.id)
       .join(TableQuery[Directors]).on(_._2.directorID === _.id)
@@ -617,17 +619,19 @@ object Star extends EntityCompanion[Stars, Star, Long] {
 We've joined together the `MoviesStars`, `Movies` and `Directors` tables using
 their foreign keys. This resulted in `((MoviesStars, Movies), Directors)` pairs
 which we then mapped back to `(MoviesStars, Directors)` pairs, which conforms
-to the required query type for this relationships `toQuery`.
+to the required query type for this relationship's `toQuery`.
 
 This works, but since we've already defined both a `movies` relationship on the
 `Star` companion object, and a `director` relationship on the `Movie` companion
 object, we can achieve the same result in a more convenient way: relationship
 composition. Instead of defining a complicated `toQuery` as we did earlier, we
-could instead do the following:
+could do the following:
 
 ```scala
 object Star extends EntityCompanion[Stars, Star, Long] {
   val movies = toManyThrough[Movies, MoviesStars, Movie]
+  
+  // Composed relationship
   val directors = movies compose Movie.director
 }
 ```
@@ -654,7 +658,7 @@ case class Star(
 
 It's also possible to further compose composed relationships with other
 relationships (although at some point the queries for retrieving the composed
-relationship will become so monstrous that you may want to consider creating a 
+relationship will become so monstrous, that you may want to consider creating a 
 new join table to cache the relationship to improve performance).
 
 ## Querying an entity set
@@ -839,17 +843,17 @@ loaded are represented by `OneUnfetched` or `ManyUnfetched` for 'to one' and
 'to many' relationships respectively. These wrappers are collectively referred
 to as 'relationship value representations'.
 
-Both fetched and unfetched relationship value representations expose provide
-the `valueAction` method, which returns a database I/O action which, when run,
-will result in a future holding the relationships value:
+Both fetched and unfetched relationship value representations expose the 
+`valueAction` method, which returns a database I/O action which, when run, will 
+result in a future holding the relationships value:
 
 ```scala
 db.run(someMovie.director.valueAction) // Future[Option[Director]]
 ```
 
 However, for relationship values that were prefetched with `include`, this won't
-actually run a database query, but simply returns the prefetched value without
-making an extra round trip to the database.
+actually run a database query, but will simply return the prefetched value 
+without making an extra round trip to the database.
 
 The aforementioned implicit conversion will run this `valueAction` for you and
 then wait for the resulting future to resolve. However, for this to work, your
@@ -913,6 +917,7 @@ value, regardless of whether it was already prefetched or not. This can be
 achieved by calling `asUnfetched`:
 
 ```scala
+// Will run a database query, regardless of whether the director value was prefetched
 val movieDirector: Option[Director] = someMovie.director.asUnfetched
 ```
 
