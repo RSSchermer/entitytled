@@ -1,5 +1,45 @@
 # Entitytled changelog
 
+## 0.7.0
+
+This version refactors the relationship value representation API to align
+better with action based database interaction. The `getValue`, `fetchValue` and
+`getOrFetchValue` operations have been replaced with `valueAction` and 
+`asUnfetched`. Implicit conversions still behave the same as before. For 
+details, please read the updated [Navigating relationship values](README.md#navigating-relationship-values)
+section of the readme.
+ 
+This version also introduces relationship composition:
+
+```scala
+val movies = toManyThrough[Movies, MoviesStars, Movie]
+val directors = movies compose Movie.director
+```
+
+Composing a 'to many' relationship with a 'to one' relationship will result in
+a new 'to many' relationship. Composing two 'to many' relationships will also
+result in a new 'to many' relationship. Composing two 'to one' relationships
+will result in a new 'to one' relationship.
+
+Composed relationships behave just like normal relationships. We can add a
+`directors` field on the `Star` case class for navigating this relationship:
+
+```scala
+case class Star(
+    id: Option[Long],
+    name: String)(implicit includes: Includes[Star])
+  extends Entity[Star, Long]
+{
+  val movies = many(Star.movies)
+  val directors = many(Star.directors)
+}
+```
+
+It's also possible to further compose composed relationships with other
+relationships (although at some point the queries for retrieving the composed
+relationship will become so monstrous that you may want to consider creating a 
+new join table to cache the relationship to improve performance).
+
 ## 0.6.0
 
 This version upgrades to Slick 3. Slick 3 introduced some major breaking
