@@ -177,13 +177,13 @@ object Director extends EntityCompanion[Directors, Director, Long]
 ```
 
 This companion object will be our entry point for querying and persisting 
-directors. It extends `EntityCompanion` which takes the table type `Directors`
-and the entity type `Director`, and the id type `Long` as type parameters.
+directors. It extends `EntityCompanion` which takes the table type 
+(`Directors`), the entity type (`Director`), and the entity's ID type (`Long`) 
+as type parameters.
 
 ### Defining the table type
 
-The final part of the Director example consists of the definition of the
-`Directors` table:
+The final part of the Director example defines the `Directors` table:
 
 ```scala
 class Directors(tag: Tag) extends EntityTable[Director, Long](tag, "DIRECTORS") {
@@ -196,7 +196,7 @@ class Directors(tag: Tag) extends EntityTable[Director, Long](tag, "DIRECTORS") 
 ```
 
 Table definition is essentially the same as it is in Slick and you can find
-more details in [Slick's documentation on the subject](http://slick.typesafe.com/doc/3.0.0/schemas.html).
+more details in [Slick's documentation on schemas](http://slick.typesafe.com/doc/3.0.0/schemas.html).
 Instead of extending a regular `Table`, a table definition for an entity needs
 to extend the `EntityTable` base class. The `EntityTable` base class takes two 
 type parameters, the entity type and the ID type, and requires that you at least 
@@ -240,7 +240,7 @@ class Directors(tag: Tag) extends EntityTable[Director, DirectorID](tag, "DIRECT
 }
 ```
 
-The [Holywood example used for testing](test/src/test/scala/entitytled/holywood)
+The [Holywood example used for testing](test/src/test/scala/entitytled/test/holywood)
 also uses this safer way of handling IDs.
 
 ## Defining direct relationships
