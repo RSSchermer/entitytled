@@ -1,24 +1,13 @@
 # Entitytled
 
 Entitytled is an ORM-like data access and persistence library build on top of 
-the amazing [Scala Slick](http://slick.typesafe.com/) library. Entitytled 
-introduces to concepts "entity" and "relationship" with the aims of bringing 
-more structure and consistency, and eliminating boilerplate.
+the amazing [Scala Slick](http://slick.typesafe.com/) library. Entitytled adds 
+the "entity" and "relationship" concepts, with the aims of improving structure 
+and consistency, and eliminating boilerplate.
 
 [![Build Status](https://travis-ci.org/RSSchermer/entitytled.svg?branch=master)](https://travis-ci.org/RSSchermer/entitytled)
 
-Notable features include:
-
-- Type safety: build on top of the type safe Slick library.
-- Object Oriented-style relationship access: navigate relationships as fields
-  (`director.movies`) instead of relying on tuples (`directorWithMovies._2`).
-- Relationship eager-loading: eager-loading one or more relationships or
-  arbitrarily nested relationships is supported.
-- Basic CRUD methods for inserting, finding, updating and deleting entities.
-
-The rest of this readme is a usage guide. The examples used in the guide are
-based on the tests for this library, so if at any point you get confused, it 
-may help to [have a look at the tests](test/src/test/scala/entitytled).
+The rest of this readme is a usage guide.
 
 ## Table of contents
 
@@ -55,13 +44,13 @@ version, add the following to your build file:
 libraryDependencies += "com.github.rsschermer" %% "entitytled-core" % "0.7.0"
 ```
 
-To use the 2.10 build explicitly add:
+To use the 2.10 build explicitly, add:
 
 ```sbt
 libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.10" % "0.7.0"
 ```
 
-To use the 2.11 build explicitly add:
+To use the 2.11 build explicitly, add:
 
 ```sbt
 libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.11" % "0.7.0"
