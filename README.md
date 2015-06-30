@@ -678,7 +678,8 @@ following chapters from Slick's documentation before you proceed:
 
 ### Building read actions
 
-The companion objects offers 2 methods to start building a read action:
+The companion object defines 2 methods which can be used  to start building a 
+read action:
 
 - `all` returns an intermediate query for all entities of this type:
 
@@ -696,7 +697,7 @@ The companion objects offers 2 methods to start building a read action:
 Both produce intermediate query results which can be modified further. This
 works exactly the same as it does in Slick and you have access to all Slick's
 result modifying operations (e.g. `filter`, `sortBy`, `map`, `take`, etc.). If, 
-for example, you wanted to build a query for the top 10 movies with the highest 
+for example, you want to build a query for the top 10 movies with the highest 
 rating, you could do this:
 
 ```scala
@@ -708,11 +709,12 @@ action that can be run on the database:
 
 ```scala
 val topTenMoviesAction = topTenMoviesQuery.result
+val topTenMovies: Future[Seq[Movie]] = db.run(topTenMoviesAction)
 ```
 
 Entitytled adds one special result modifying operation: `include`. `include` can 
-be used for eager-loading relationships. Eager-loading is a way to solve the 
-`n + 1` query problem:
+be used to eager-load relationships. Eager-loading is a way to solve the `n + 1` 
+query problem:
 
 ```scala
 db.run(Movie.all.result).onSuccess { _.foreach { m => 
@@ -722,10 +724,10 @@ db.run(Movie.all.result).onSuccess { _.foreach { m =>
 }
 ```
 
-This snippet runs a database I/O action which will a future result holding all
-movies. If this future runs successfully, it will print out the movies name
+This snippet runs a database I/O action which will produce a future holding all
+movies. If this future runs successfully, it will print out the movie's name
 and the name of the director who directed it. If there are 1000 movies, this 
-will execute a 1001 queries: 1 to retrieve all the movies and then one for each 
+will execute 1001 queries: 1 to retrieve all the movies and then one for each 
 movie to retrieve its director. This is obviously not desirable. 
 
 The solution to this problem is to eager-load the directors with `include`:
@@ -786,7 +788,11 @@ object, which takes the new entity as an argument:
 val insertAction = Star.insert(Star(None, "Marlon Brando"))
 ```
 
-This action's result value will be the id of the newly inserted entity.
+This action's result value will be the id of the newly inserted entity:
+
+```scala
+val id: Future[Long] = db.run(insertAction)
+```
 
 ### Creating an update action
 
@@ -803,7 +809,7 @@ otherwise an exception will be thrown.
 ### Creating a delete action
 
 A delete action can be created by calling the `delete` method on the companion
-object, which takes the id of the entity to be deleted as an argument:
+object, which takes the ID of the entity to be deleted as an argument:
 
 ```scala
 val deleteAction = Movie.delete(38)
@@ -834,7 +840,7 @@ to as 'relationship value representations'.
 
 Both fetched and unfetched relationship value representations expose the 
 `valueAction` method, which returns a database I/O action which, when run, will 
-result in a future holding the relationships value:
+result in a future holding the relationship's value:
 
 ```scala
 db.run(someMovie.director.valueAction) // Future[Option[Director]]
@@ -845,9 +851,8 @@ actually run a database query, but will simply return the prefetched value
 without making an extra round trip to the database.
 
 The aforementioned implicit conversion will run this `valueAction` for you and
-then wait for the resulting future to resolve. However, for this to work, your
-database definition must be available as an implicit value in the current
-context:
+then wait for the resulting future to resolve. For this to work, your database 
+definition must be available as an implicit value in the current context:
 
 ```scala
 import MyProfile.driver.api.Database
@@ -889,7 +894,7 @@ prefetch the relationship values, consider running the `valueAction` explicitly
 and handling its future result asynchronously.
 
 If you want to execute different code paths depending on whether or not the 
-value was prefetched, you can pattern-match the relationship value 
+value was prefetched, you can pattern-match against the relationship value 
 representation:
 
 ```scala
@@ -901,12 +906,13 @@ someMovie.director match {
 }
 ```
 
-You may also want to force the execution of a new query to retrieve a fresh 
-value, regardless of whether it was already prefetched or not. This can be 
-achieved by calling `asUnfetched`:
+If you want to force the execution of a new query to retrieve a fresh value, 
+regardless of whether it was already prefetched or not, first call 
+`asUnfetched`:
 
 ```scala
-// Will run a database query, regardless of whether the director value was prefetched
+// Will run a new database query, regardless of whether the director value was 
+// prefetched
 val movieDirector: Option[Director] = someMovie.director.asUnfetched
 ```
 
@@ -960,8 +966,8 @@ gives an example of using Entitytled with Play Framework.
 
 ### Real world example
 
-I was fortunately allowed the open-source my [master thesis research project](https://github.com/RSSchermer/pim-aid), 
-for which Entitytled was originally created. I doubt it's a particularly good 
-example of a Play application (feedback always welcome, please open issues!), 
-but it does provides a more real world example of using Entitytled and covers 
-many of the things discussed in this guide.
+I was fortunately allowed the open-source my [master thesis research project](https://github.com/RSSchermer/pim-aid) 
+(the project for which Entitytled was originally created). I doubt it's a 
+particularly good example of a Play application (feedback always welcome, please 
+open issues!), but it does provides a more real world example of using 
+Entitytled and covers many of the things discussed in this guide.
