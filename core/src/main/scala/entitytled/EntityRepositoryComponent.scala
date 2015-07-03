@@ -85,28 +85,32 @@ trait EntityRepositoryComponent {
       *
       * @param instance The entity instance that is to be insterted.
       */
-    protected def beforeInsert(instance: E): DBIO[E] = DBIO.successful(instance)
+    protected def beforeInsert(instance: E)(implicit ec: ExecutionContext): DBIO[E] =
+      DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken before
       * updating an entity.
       *
       * @param instance The entity instance that is to be updated.
       */
-    protected def beforeUpdate(instance: E): DBIO[E] = DBIO.successful(instance)
+    protected def beforeUpdate(instance: E)(implicit ec: ExecutionContext): DBIO[E] =
+      DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken either before
       * inserting, or before updating an entity.
       *
       * @param instance The entity instance that is to be saved.
       */
-    protected def beforeSave(instance: E): DBIO[E] = DBIO.successful(instance)
+    protected def beforeSave(instance: E)(implicit ec: ExecutionContext): DBIO[E] =
+      DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken before
       * deleting an entity.
       *
       * @param id The ID of entity instance that is to be deleted.
       */
-    protected def beforeDelete(id: I): DBIO[Unit] = DBIO.successful(())
+    protected def beforeDelete(id: I)(implicit ec: ExecutionContext): DBIO[Unit] =
+      DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
       * inserting a new entity.
@@ -114,7 +118,8 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was inserted.
       * @param instance The entity instance that was inserted.
       */
-    protected def afterInsert(id: I, instance: E): DBIO[Unit] = DBIO.successful(())
+    protected def afterInsert(id: I, instance: E)(implicit ec: ExecutionContext): DBIO[Unit] =
+      DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
       * updating an entity.
@@ -122,7 +127,8 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was updated.
       * @param instance The entity instance that was updated.
       */
-    protected def afterUpdate(id: I, instance: E): DBIO[Unit] = DBIO.successful(())
+    protected def afterUpdate(id: I, instance: E)(implicit ec: ExecutionContext): DBIO[Unit] =
+      DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken either after
       * inserting, or after updating an entity.
@@ -130,14 +136,16 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was saved.
       * @param instance The entity instance that was saved.
       */
-    protected def afterSave(id: I, instance: E): DBIO[Unit] = DBIO.successful(())
+    protected def afterSave(id: I, instance: E)(implicit ec: ExecutionContext): DBIO[Unit] =
+      DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
       * deleting an entity.
       *
       * @param id The ID of entity instance that was deleted.
       */
-    protected def afterDelete(id: I): DBIO[Unit] = DBIO.successful(())
+    protected def afterDelete(id: I)(implicit ec: ExecutionContext): DBIO[Unit] =
+      DBIO.successful(())
   }
 
   /** Provides a table query for table T.
