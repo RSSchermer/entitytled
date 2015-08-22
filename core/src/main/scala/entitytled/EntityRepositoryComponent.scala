@@ -180,8 +180,8 @@ object MaterializeTableQueryProviderImpl {
   (c: Context): c.Expr[Res] = {
     import c.universe._
 
-    val tableType = c.weakTypeOf[T].typeSymbol.asClass
-    val elementType = c.weakTypeOf[M].typeSymbol.asClass
+    val tableType = c.weakTypeOf[T]
+    val elementType = c.weakTypeOf[M]
 
     c.Expr(q"""
     new TableQueryProvider[$tableType, $elementType] {

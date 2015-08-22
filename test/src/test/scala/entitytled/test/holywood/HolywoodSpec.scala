@@ -9,7 +9,9 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-trait HolywoodSpec extends DbSpec with H2Profile with Model {
+import entitytled.test.holywood.model._
+
+trait HolywoodSpec extends DbSpec with H2Profile with DirectorComponent with MovieComponent with StarComponent {
   self: Suite =>
 
   import driver.api._

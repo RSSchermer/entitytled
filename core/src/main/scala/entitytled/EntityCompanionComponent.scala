@@ -432,9 +432,9 @@ object IndirectToQueryProviderMaterializeImpl {
   (c: Context): c.Expr[Res] = {
     import c.universe._
 
-    val throughTableType = c.weakTypeOf[Through].typeSymbol.asClass
-    val toTableType = c.weakTypeOf[To].typeSymbol.asClass
-    val elementType = c.weakTypeOf[T].typeSymbol.asClass
+    val throughTableType = c.weakTypeOf[Through]
+    val toTableType = c.weakTypeOf[To]
+    val elementType = c.weakTypeOf[T]
 
     c.Expr(q"""
     new IndirectToQueryProvider[$toTableType, $throughTableType, $elementType] {
@@ -450,8 +450,8 @@ object DirectJoinConditionProviderMaterializeImpl {
   (c: Context): c.Expr[Res] = {
     import c.universe._
 
-    val fromTableType = c.weakTypeOf[From].typeSymbol.asClass
-    val toTableType = c.weakTypeOf[To].typeSymbol.asClass
+    val fromTableType = c.weakTypeOf[From]
+    val toTableType = c.weakTypeOf[To]
 
     c.Expr(q"""
     new DirectJoinConditionProvider[$fromTableType, $toTableType] {
@@ -469,9 +469,9 @@ object IndirectJoinConditionProviderMaterializeImpl {
   (c: Context): c.Expr[Res] = {
     import c.universe._
 
-    val fromTableType = c.weakTypeOf[From].typeSymbol.asClass
-    val throughTableType = c.weakTypeOf[Through].typeSymbol.asClass
-    val toTableType = c.weakTypeOf[To].typeSymbol.asClass
+    val fromTableType = c.weakTypeOf[From]
+    val throughTableType = c.weakTypeOf[Through]
+    val toTableType = c.weakTypeOf[To]
 
     c.Expr(q"""
     new IndirectJoinConditionProvider[$fromTableType, $throughTableType, $toTableType] {

@@ -500,24 +500,11 @@ trait JoinConditionMacroImpl {
   protected def foreignKeys[From <: AbstractTable[_] : c.WeakTypeTag,
                             To <: AbstractTable[_] : c.WeakTypeTag]
   (c: Context): Seq[c.universe.MethodSymbol] = {
-    c.weakTypeOf[From].typeSymbol.typeSignature.members
-      .filter(_.isMethod).map(_.asMethod)
-      .filter(_.returnType <:< c.weakTypeOf[ForeignKeyQuery[To, _]])
+    val fromType = c.weakTypeOf[From]
+
+    fromType.members.filter(_.isMethod).map(_.asMethod)
+      .filter(_.typeSignatureIn(fromType).resultType <:< c.weakTypeOf[ForeignKeyQuery[To, _]])
       .toList
-  }
-
-  protected def idColumnType[T <: AbstractTable[_] : c.WeakTypeTag](c: Context)
-  : c.universe.Type = {
-    val idField = c.weakTypeOf[T].typeSymbol.typeSignature.members
-      .filter(_.isMethod).map(_.asMethod)
-      .find(_.name.toString == "id")
-
-    if (idField.isEmpty) {
-      val tableName = c.weakTypeOf[T].typeSymbol.asClass.fullName
-      c.abort(c.enclosingPosition, s"Could not find an `id` member on $tableName.")
-    }
-
-    idField.get.returnType
   }
 }
 
@@ -528,11 +515,11 @@ object DirectJoinConditionImpl extends JoinConditionMacroImpl {
   (c: Context): c.Expr[Res] = {
     import c.universe._
 
-    val fromTableType = c.weakTypeOf[From].typeSymbol.asClass
-    val toTableType = c.weakTypeOf[To].typeSymbol.asClass
+    val fromTableType = c.weakTypeOf[From]
+    val toTableType = c.weakTypeOf[To]
 
-    val fromTableName = fromTableType.fullName
-    val toTableName = toTableType.fullName
+    val fromTableName = fromTableType.typeSymbol.asClass.fullName
+    val toTableName = toTableType.typeSymbol.asClass.fullName
 
     val fromKeys = foreignKeys[From, To](c)
     val toKeys = foreignKeys[To, From](c)
@@ -554,12 +541,12 @@ object DirectJoinConditionImpl extends JoinConditionMacroImpl {
     if (fromKeys.size == 1) {
       c.Expr(q"""
         (f: $fromTableType, t: $toTableType) =>
-          f.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[To](c)}] === t.id
+          f.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[Rep[String]] === t.id.asInstanceOf[Rep[String]]
       """)
     } else {
       c.Expr(q"""
         (f: $fromTableType, t: $toTableType) =>
-          f.id === t.${toKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[From](c)}]
+          f.id.asInstanceOf[Rep[String]] === t.${toKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[Rep[String]]
       """)
     }
   }
@@ -573,12 +560,12 @@ object IndirectJoinConditionImpl extends JoinConditionMacroImpl {
   (c: Context): c.Expr[Res] = {
     import c.universe._
 
-    val fromTableType = c.weakTypeOf[From].typeSymbol.asClass
-    val throughTableType = c.weakTypeOf[Through].typeSymbol.asClass
-    val toTableType = c.weakTypeOf[To].typeSymbol.asClass
+    val fromTableType = c.weakTypeOf[From]
+    val throughTableType = c.weakTypeOf[Through]
+    val toTableType = c.weakTypeOf[To]
 
-    val fromTableName = fromTableType.fullName
-    val throughTableName = throughTableType.fullName
+    val fromTableName = fromTableType.typeSymbol.asClass.fullName
+    val throughTableName = throughTableType.typeSymbol.asClass.fullName
 
     val fromKeys = foreignKeys[From, To](c)
     val throughKeys = foreignKeys[Through, From](c)
@@ -600,12 +587,12 @@ object IndirectJoinConditionImpl extends JoinConditionMacroImpl {
     if (fromKeys.size == 1) {
       c.Expr(q"""
         (f: $fromTableType, t: ($throughTableType, $toTableType)) =>
-          f.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[Through](c)}] === t._1.id
+          f.${fromKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[Rep[String]] === t._1.id.asInstanceOf[Rep[String]]
       """)
     } else {
       c.Expr(q"""
         (f: $fromTableType, t: ($throughTableType, $toTableType)) =>
-          f.id === t._1.${throughKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[${idColumnType[From](c)}]
+          f.id.asInstanceOf[Rep[String]] === t._1.${throughKeys.head.name.toTermName}.fks.head.sourceColumns.asInstanceOf[Rep[String]]
       """)
     }
   }
