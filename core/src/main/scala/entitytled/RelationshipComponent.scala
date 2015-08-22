@@ -500,11 +500,16 @@ trait JoinConditionMacroImpl {
   protected def foreignKeys[From <: AbstractTable[_] : c.WeakTypeTag,
                             To <: AbstractTable[_] : c.WeakTypeTag]
   (c: Context): Seq[c.universe.MethodSymbol] = {
+    import c.universe._
+
     val fromType = c.weakTypeOf[From]
 
-    fromType.members.filter(_.isMethod).map(_.asMethod)
-      .filter(_.typeSignatureIn(fromType).resultType <:< c.weakTypeOf[ForeignKeyQuery[To, _]])
-      .toList
+    fromType.members.filter(_.isMethod).map(_.asMethod).filter(_.typeSignatureIn(fromType) match {
+      case NullaryMethodType(returnType) =>
+        returnType <:< c.weakTypeOf[ForeignKeyQuery[To, _]]
+      case _ =>
+        false
+    }).toList
   }
 }
 
