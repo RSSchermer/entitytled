@@ -29,7 +29,7 @@ trait StarComponent {
     def name = column[String]("name")
     def age = column[Int]("age")
 
-    def * = (id.?, name, age) <>((Star.apply _).tupled, Star.unapply)
+    def * = (id.?, name, age) <> ((Star.apply _).tupled, Star.unapply)
   }
 
   class MoviesStars(tag: Tag) extends Table[(MovieID, StarID)](tag, "MOVIES_STARS") {
