@@ -19,7 +19,7 @@ trait HooksSpec extends DbSpec with H2Profile with PersonComponent with PersonHo
 
   def setupDatabase(): driver.backend.DatabaseDef = {
 
-    val dbUrl = s"jdbc:h2:mem:${this.getClass.getSimpleName}"
+    val dbUrl = s"jdbc:h2:mem:${this.getClass.getSimpleName};DB_CLOSE_DELAY=-1"
     val db = Database.forURL(dbUrl, driver = "org.h2.Driver")
     db.createSession().force()
 

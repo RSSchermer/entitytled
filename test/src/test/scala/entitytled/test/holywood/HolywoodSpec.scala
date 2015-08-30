@@ -22,7 +22,7 @@ trait HolywoodSpec extends DbSpec with H2Profile with DirectorComponent with Mov
 
   def setupDatabase(): driver.backend.DatabaseDef = {
 
-    val dbUrl = s"jdbc:h2:mem:${this.getClass.getSimpleName}"
+    val dbUrl = s"jdbc:h2:mem:${this.getClass.getSimpleName};DB_CLOSE_DELAY=-1"
     val db = Database.forURL(dbUrl, driver = "org.h2.Driver")
     db.createSession().force()
 
