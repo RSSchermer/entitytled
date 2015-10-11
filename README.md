@@ -41,19 +41,19 @@ To make SBT automatically use the correct build based on your project's Scala
 version, add the following to your build file:
 
 ```sbt
-libraryDependencies += "com.github.rsschermer" %% "entitytled-core" % "0.7.2"
+libraryDependencies += "com.github.rsschermer" %% "entitytled-core" % "0.8.0"
 ```
 
 To use the 2.10 build explicitly, add:
 
 ```sbt
-libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.10" % "0.7.2"
+libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.10" % "0.8.0"
 ```
 
 To use the 2.11 build explicitly, add:
 
 ```sbt
-libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.11" % "0.7.2"
+libraryDependencies += "com.github.rsschermer" % "entitytled-core_2.11" % "0.8.0"
 ```
 
 ## Defining an Entity type
