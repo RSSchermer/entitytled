@@ -926,7 +926,8 @@ matching version of Slick:
 | Entitytled version | Slick version |
 | ------------------ | ------------- |
 | <= 0.5.x           | 2.1.x         |
-| >= 0.6.x           | 3.0.0         |
+| >= 0.6.0 < 0.8.0   | 3.0.0         |
+| >= 0.8.0           | 3.1.0         |
 
 (The [play-slick readme](https://github.com/playframework/play-slick/blob/master/README.md#versioning)
 provides a table matching versions of the plugin to versions of Slick and 

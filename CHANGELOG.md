@@ -1,5 +1,9 @@
 # Entitytled changelog
 
+## 0.8.0
+
+Upgrades to slick 3.1.0.
+
 ## 0.7.0
 
 This version refactors the relationship value representation API to align

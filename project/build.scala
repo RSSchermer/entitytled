@@ -24,7 +24,7 @@ object BuildSettings {
 }
 
 object Dependencies {
-  val slick         = "com.typesafe.slick"  %%  "slick"           % "3.0.0"
+  val slick         = "com.typesafe.slick"  %%  "slick"           % "3.1.0"
   val scalaz        = "org.scalaz"          %%  "scalaz-core"     % "7.1.2"
   val scalaTest     = "org.scalatest"       %%  "scalatest"       % "2.2.1"     % "test"
   val h2database    = "com.h2database"      %   "h2"              % "1.4.181"   % "test"
