@@ -346,8 +346,8 @@ val director = toOne[Directors, Director](
 
 The default `toQuery` allows any director to be a target for this relationship
 and the default join condition states that a director is related to a movie
-if the movies `directorID` equals the movies `id` (which is exactly what the
-foreign key constraint we defined on the table describes).
+if the movie's `directorID` equals the director's `id` (which is exactly what 
+the foreign key constraint we defined on the table describes).
 
 Now, let's take another look at the `director` field on our `Movie` case class:
 
@@ -549,14 +549,14 @@ with direct relationships, it now has to join the owner type to this joined
 joinCondition = (m: Movies, t: (MovieStars, Stars)) => m.id === t._1.movieID
 ```
 
-If you don't specify the `toQuery` argument explicitly, Entitytled will attempt
-to infer a default `toQuery` at compile time by examining the foreign keys that
-were defined on the owner table and the join table. For Entitytled to be able
-to do this, there must be exactly 1 candidate foreign key (a foreign key from
-the owner table to the join table, or from the join table to the owner table).
-Again, if there's more than one candidate foreign key or if no candidate foreign 
-keys were defined, a compiler error is raised, which can always be resolved by
-providing the `joinCondition` explicitly.
+If you don't specify the `joinCondition` argument explicitly, Entitytled will 
+attempt to infer a default `joinCondition` at compile time by examining the 
+foreign keys that were defined on the owner table and the join table. For 
+Entitytled to be able to do this, there must be exactly 1 candidate foreign key 
+(a foreign key from the owner table to the join table, or from the join table to 
+the owner table). Again, if there's more than one candidate foreign key or if no 
+candidate foreign keys were defined, a compiler error is raised, which can 
+always be resolved by providing the `joinCondition` explicitly.
 
 To complete the example, here's the definition of the `Star` type:
 
@@ -662,7 +662,7 @@ executed on a database, such as a read query, inserting a new record, or
 deleting a record. You then use a specific database definition to run such an 
 action, which will produce a future holding the action's result:
 
-```
+```scala
 db.run(someAction) // Future holding the action's result
 ```
 
