@@ -21,7 +21,7 @@ trait MovieComponent {
 
   object Movie extends EntityCompanion[Movies, Movie, MovieID] {
     val stars = toManyThrough[Stars, MoviesStars, Star]
-    val director = toOne[Directors, Director]
+    val director = toOne[Directors, Director]()
   }
 
   class Movies(tag: Tag) extends EntityTable[Movie, MovieID](tag, "MOVIES") {

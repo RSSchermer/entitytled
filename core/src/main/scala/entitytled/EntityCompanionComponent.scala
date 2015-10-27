@@ -44,88 +44,12 @@ trait EntityCompanionComponent {
       */
     implicit val defaultIncludes: Includes[E] = Includes()
 
-    /* Below follow a number of relationship definition helper overloads. These
-     * overloads are a trick to simulate default argument values for these
-     * helper methods with implicit macros. This makes it possible to infer
-     * relationship defaults at compile time.
-     *
-     * The downside to this is that as soon as a method is overloaded, the
-     * compiler gives up on trying to infer the type of partial functions, even
-     * if the parameter is named. This means that this is no longer possible to
-     * declare a join condition override like this:
-     *
-     * val child = toOne[Children, Child](joinCondition = _.id === _.parentId)
-     *
-     * Instead a more verbose version needs to be used that explicitly states
-     * the join functions argument types:
-     *
-     * val child = toOne[Children, Child](
-     *   joinCondition = (p: Parent, c: Child) => p.id === c.parentId
-     * )
-     */
-
-    /** Creates a new direct (without a join-table) 'to one' relationship.
-      *
-      * @param toQuery       The query defining the set of possibly related rows.
-      * @param joinCondition The condition on which the entity query and the
-      *                      toQuery are to be joined.
-      *
-      * @tparam To The relationship's target table type.
-      * @tparam M  The target table's element type.
-      */
-    protected def toOne[To <: Table[M], M]
-    (toQuery: Query[To, M, Seq], joinCondition: (T, To) => Rep[Boolean])
-    : ToOne[T, To, E, I, M] =
-      new ToOne[T, To, E, I, M](query, toQuery, joinCondition)
-
-    /** Creates a new direct (without a join-table) 'to one' relationship.
-      *
-      * This overload attempts to infer the toQuery parameter at compile time.
-      * If it fails to do so, you may explicitly provide a toQuery to resolve
-      * this.
-      *
-      * @param joinCondition The condition on which the entity query and the
-      *                      toQuery are to be joined.
-      *
-      * @tparam To The relationship's target table type.
-      * @tparam M  The target table's element type.
-      */
-    protected def toOne[To <: Table[M], M]
-    (joinCondition: (T, To) => Rep[Boolean])
-    (implicit provider: TableQueryProvider[To, M])
-    : ToOne[T, To, E, I, M] =
-      new ToOne[T, To, E, I, M](query, provider.tableQuery, joinCondition)
-
-    /** Creates a new direct (without a join-table) 'to one' relationship.
-      *
-      * This overload attempts to infer the joinCondition parameter at compile
-      * time. If it fails to do so, you may explicitly provide a joinCondition
-      * to resolve this.
-      *
-      * @param toQuery The query defining the set of possibly related rows.
-      *
-      * @tparam To The relationship's target table type.
-      * @tparam M  The target table's element type.
-      */
-    protected def toOne[To <: Table[M], M]
-    (toQuery: Query[To, M, Seq])
-    (implicit provider: DirectJoinConditionProvider[T, To])
-    : ToOne[T, To, E, I, M] =
-      new ToOne[T, To, E, I, M](query, toQuery, provider.joinCondition)
-
-    /** Creates a new direct (without a join-table) 'to one' relationship.
-      *
-      * This overload attempts to infer both the toQuery and the joinCondition
-      * parameter at compile time. If it fails to do so for either parameter,
-      * you may explicitly provide the parameter to resolve this.
-      *
-      * @tparam To The relationship's target table type.
-      * @tparam M  The target table's element type.
-      */
-    protected def toOne[To <: Table[M], M]
-    (implicit tqp: TableQueryProvider[To, M], jcp: DirectJoinConditionProvider[T, To])
-    : ToOne[T, To, E, I, M] =
-      new ToOne[T, To, E, I, M](query, tqp.tableQuery, jcp.joinCondition)
+    protected def toOne[To <: Table[M], M](
+      toQuery: Query[To, M, Seq] = null,
+      joinCondition: (T, To) => Rep[Boolean] = null,
+      fromQuery: Query[T, E, Seq] = query
+    ): ToOne[T, To, E, I, M] =
+      macro RelationshipMacroImplementations.toOne[T, To, E, I, M, ToOne[T, To, E, I, M]]
 
     /** Creates a new direct (without a join-table) 'to many' relationship.
       *
@@ -421,6 +345,38 @@ trait EntityCompanionComponent {
     implicit def materialize[From <: Table[_], Through <: Table[_], To <: Table[_]]
     : IndirectJoinConditionProvider[From, Through, To] =
       macro IndirectJoinConditionProviderMaterializeImpl[From, Through, To, IndirectJoinConditionProvider[From, Through, To]]
+  }
+}
+
+object RelationshipMacroImplementations {
+  import slick.lifted.{AbstractTable, Query, Rep}
+
+  def toOne[
+    From <: AbstractTable[_] : c.WeakTypeTag,
+    To <: AbstractTable[_] : c.WeakTypeTag,
+    E : c.WeakTypeTag,
+    I : c.WeakTypeTag,
+    T : c.WeakTypeTag,
+    Res : c.WeakTypeTag
+  ](c: Context)(
+    toQuery: c.Expr[Query[To, T, Seq]],
+    joinCondition: c.Expr[(T, To) => Rep[Boolean]],
+    fromQuery: c.Expr[Query[From, E, Seq]]
+  ): c.Expr[Res] = {
+    import c.universe._
+
+    val fromTableType = c.weakTypeOf[From]
+    val toTableType = c.weakTypeOf[To]
+    val entityType = c.weakTypeOf[E]
+    val idType = c.weakTypeOf[I]
+    val elementType = c.weakTypeOf[T]
+
+    c.Expr(q"""
+    new ToOne[$fromTableType, $toTableType, $entityType, $idType, $elementType](
+      $fromQuery,
+      Option($toQuery).getOrElse(TableQuery[$toTableType]),
+      Option($joinCondition).getOrElse(DirectJoinCondition[$fromTableType, $toTableType])
+    )""")
   }
 }
 
