@@ -656,11 +656,11 @@ The entry point for an entity query is the companion object for that entity.
 Although you may also use Slick's `TableQuery` directly, the companion object
 adds some additional functionality for working with entities.
 
-As of Slick 3.0, all interaction with the database happens via a data I/O action
-(`DBIOAction`). A `DBIOAction` represents one or more operations that are to be 
-executed on a database, such as a read query, inserting a new record, or 
-deleting a record. You then use a specific database definition to run such an 
-action, which will produce a future holding the action's result:
+As of Slick 3.0, all interactions with the database happen via a database I/O 
+actions (`DBIOAction`). A `DBIOAction` represents one or more operations that 
+are to be executed on a database, such as a read query, inserting a new record,  
+or deleting a record. You then use a specific database definition to run such  
+an action, which will produce a future holding the action's result:
 
 ```scala
 db.run(someAction) // Future holding the action's result
@@ -695,7 +695,7 @@ read action:
   ```
   
 Both produce intermediate query results which can be modified further. This
-works exactly the same as it does in Slick and you have access to all Slick's
+works exactly the same as it does in Slick and you have access to all of Slick's
 result modifying operations (e.g. `filter`, `sortBy`, `map`, `take`, etc.). If, 
 for example, you want to build a query for the top 10 movies with the highest 
 rating, you could do this:
