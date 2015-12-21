@@ -34,11 +34,11 @@ trait EntityCompanionComponent {
     * @tparam E The entity type.
     * @tparam I The entity's ID type.
     */
-  abstract class EntityCompanion[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T, E])
-    extends EntityRepository[T, E, I]
-  {
-
+  abstract class EntityCompanion[T <: EntityTable[E, I], E <: Entity[E, I], I](
+    implicit
+      ev: BaseColumnType[I],
+      tqp: TableQueryProvider[T, E]
+  ) extends EntityRepository[T, E, I] {
     /** The default set of included relationship values to be included on
       * associated entity instances.
       */
@@ -66,16 +66,18 @@ trait EntityCompanionComponent {
 
     /** Creates a new direct (without a join-table) 'to one' relationship.
       *
-      * @param toQuery       The query defining the set of possibly related rows.
+      * @param toQuery       The query defining the set of possibly related
+      *                      rows.
       * @param joinCondition The condition on which the entity query and the
       *                      toQuery are to be joined.
       *
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toOne[To <: Table[M], M]
-    (toQuery: Query[To, M, Seq], joinCondition: (T, To) => Rep[Boolean])
-    : ToOne[T, To, E, I, M] =
+    protected def toOne[To <: Table[M], M](
+        toQuery: Query[To, M, Seq],
+        joinCondition: (T, To) => Rep[Boolean]
+    ): ToOne[T, To, E, I, M] =
       new ToOne[T, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new direct (without a join-table) 'to one' relationship.
@@ -90,10 +92,11 @@ trait EntityCompanionComponent {
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toOne[To <: Table[M], M]
-    (joinCondition: (T, To) => Rep[Boolean])
-    (implicit provider: TableQueryProvider[To, M])
-    : ToOne[T, To, E, I, M] =
+    protected def toOne[To <: Table[M], M](
+        joinCondition: (T, To) => Rep[Boolean]
+    )(implicit
+        provider: TableQueryProvider[To, M]
+    ): ToOne[T, To, E, I, M] =
       new ToOne[T, To, E, I, M](query, provider.tableQuery, joinCondition)
 
     /** Creates a new direct (without a join-table) 'to one' relationship.
@@ -107,10 +110,11 @@ trait EntityCompanionComponent {
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toOne[To <: Table[M], M]
-    (toQuery: Query[To, M, Seq])
-    (implicit provider: DirectJoinConditionProvider[T, To])
-    : ToOne[T, To, E, I, M] =
+    protected def toOne[To <: Table[M], M](
+        toQuery: Query[To, M, Seq]
+    )(implicit
+        provider: DirectJoinConditionProvider[T, To]
+    ): ToOne[T, To, E, I, M] =
       new ToOne[T, To, E, I, M](query, toQuery, provider.joinCondition)
 
     /** Creates a new direct (without a join-table) 'to one' relationship.
@@ -122,23 +126,27 @@ trait EntityCompanionComponent {
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toOne[To <: Table[M], M]
-    (implicit tqp: TableQueryProvider[To, M], jcp: DirectJoinConditionProvider[T, To])
-    : ToOne[T, To, E, I, M] =
+    protected def toOne[To <: Table[M], M](
+      implicit
+        tqp: TableQueryProvider[To, M],
+        jcp: DirectJoinConditionProvider[T, To]
+    ): ToOne[T, To, E, I, M] =
       new ToOne[T, To, E, I, M](query, tqp.tableQuery, jcp.joinCondition)
 
     /** Creates a new direct (without a join-table) 'to many' relationship.
       *
-      * @param toQuery       The query defining the set of possibly related rows.
+      * @param toQuery       The query defining the set of possibly related
+      *                      rows.
       * @param joinCondition The condition on which the entity query and the
       *                      toQuery are to be joined.
       *
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toMany[To <: Table[M], M]
-    (toQuery: Query[To, M, Seq], joinCondition: (T, To) => Rep[Boolean])
-    : ToMany[T, To, E, I, M] =
+    protected def toMany[To <: Table[M], M](
+        toQuery: Query[To, M, Seq],
+        joinCondition: (T, To) => Rep[Boolean]
+    ): ToMany[T, To, E, I, M] =
       new ToMany[T, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new direct (without a join-table) 'to many' relationship.
@@ -153,10 +161,11 @@ trait EntityCompanionComponent {
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toMany[To <: Table[M], M]
-    (joinCondition: (T, To) => Rep[Boolean])
-    (implicit provider: TableQueryProvider[To, M])
-    : ToMany[T, To, E, I, M] =
+    protected def toMany[To <: Table[M], M](
+        joinCondition: (T, To) => Rep[Boolean]
+    )(implicit
+        provider: TableQueryProvider[To, M]
+    ): ToMany[T, To, E, I, M] =
       toMany[To, M](provider.tableQuery, joinCondition)
 
     /** Creates a new direct (without a join-table) 'to many' relationship.
@@ -170,10 +179,11 @@ trait EntityCompanionComponent {
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toMany[To <: Table[M], M]
-    (toQuery: Query[To, M, Seq])
-    (implicit provider: DirectJoinConditionProvider[T, To])
-    : ToMany[T, To, E, I, M] =
+    protected def toMany[To <: Table[M], M](
+        toQuery: Query[To, M, Seq]
+    )(implicit
+        provider: DirectJoinConditionProvider[T, To]
+    ): ToMany[T, To, E, I, M] =
       new ToMany[T, To, E, I, M](query, toQuery, provider.joinCondition)
 
     /** Creates a new direct (without a join-table) 'to many' relationship.
@@ -185,14 +195,17 @@ trait EntityCompanionComponent {
       * @tparam To The relationship's target table type.
       * @tparam M  The target table's element type.
       */
-    protected def toMany[To <: Table[M], M]
-    (implicit tqp: TableQueryProvider[To, M], jcp: DirectJoinConditionProvider[T, To])
-    : ToMany[T, To, E, I, M] =
+    protected def toMany[To <: Table[M], M](
+      implicit
+        tqp: TableQueryProvider[To, M],
+        jcp: DirectJoinConditionProvider[T, To]
+    ): ToMany[T, To, E, I, M] =
       new ToMany[T, To, E, I, M](query, tqp.tableQuery, jcp.joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to one' relationship.
       *
-      * @param toQuery       The query defining the set of possibly related rows.
+      * @param toQuery       The query defining the set of possibly related
+      *                      rows.
       * @param joinCondition The condition on which the entity query and the
       *                      toQuery are to be joined.
       *
@@ -200,9 +213,10 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toOneThrough[To <: Table[M], Through <: Table[_], M]
-    (toQuery: Query[(Through, To), _ <: (_, M), Seq], joinCondition: (T, (Through, To)) => Rep[Boolean])
-    : ToOneThrough[T, Through, To, E, I, M] =
+    protected def toOneThrough[To <: Table[M], Through <: Table[_], M](
+        toQuery: Query[(Through, To), _ <: (_, M), Seq],
+        joinCondition: (T, (Through, To)) => Rep[Boolean]
+    ): ToOneThrough[T, Through, To, E, I, M] =
       new ToOneThrough[T, Through, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to one' relationship.
@@ -218,11 +232,16 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toOneThrough[To <: Table[M], Through <: Table[_], M]
-    (joinCondition: (T, (Through, To)) => Rep[Boolean])
-    (implicit provider: IndirectToQueryProvider[To, Through, M])
-    : ToOneThrough[T, Through, To, E, I, M] =
-      new ToOneThrough[T, Through, To, E, I, M](query, provider.toQuery, joinCondition)
+    protected def toOneThrough[To <: Table[M], Through <: Table[_], M](
+        joinCondition: (T, (Through, To)) => Rep[Boolean]
+    )(implicit
+        provider: IndirectToQueryProvider[To, Through, M]
+    ): ToOneThrough[T, Through, To, E, I, M] =
+      new ToOneThrough[T, Through, To, E, I, M](
+        query,
+        provider.toQuery,
+        joinCondition
+      )
 
     /** Creates a new indirect (with a join-table) 'to one' relationship.
       *
@@ -236,11 +255,16 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toOneThrough[To <: Table[M], Through <: Table[_], M]
-    (toQuery: Query[(Through, To), _ <: (_, M), Seq])
-    (implicit provider: IndirectJoinConditionProvider[T, Through, To])
-    : ToOneThrough[T, Through, To, E, I, M] =
-      new ToOneThrough[T, Through, To, E, I, M](query, toQuery, provider.joinCondition)
+    protected def toOneThrough[To <: Table[M], Through <: Table[_], M](
+        toQuery: Query[(Through, To), _ <: (_, M), Seq]
+    )(implicit
+        provider: IndirectJoinConditionProvider[T, Through, To]
+    ): ToOneThrough[T, Through, To, E, I, M] =
+      new ToOneThrough[T, Through, To, E, I, M](
+        query,
+        toQuery,
+        provider.joinCondition
+      )
 
     /** Creates a new indirect (with a join-table) 'to one' relationship.
       *
@@ -252,14 +276,21 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toOneThrough[To <: Table[M], Through <: Table[_], M]
-    (implicit tqp: IndirectToQueryProvider[To, Through, M], jcp: IndirectJoinConditionProvider[T, Through, To])
-    : ToOneThrough[T, Through, To, E, I, M] =
-      new ToOneThrough[T, Through, To, E, I, M](query, tqp.toQuery, jcp.joinCondition)
+    protected def toOneThrough[To <: Table[M], Through <: Table[_], M](
+      implicit
+        tqp: IndirectToQueryProvider[To, Through, M],
+        jcp: IndirectJoinConditionProvider[T, Through, To]
+    ): ToOneThrough[T, Through, To, E, I, M] =
+      new ToOneThrough[T, Through, To, E, I, M](
+        query,
+        tqp.toQuery,
+        jcp.joinCondition
+      )
 
     /** Creates a new indirect (with a join-table) 'to many' relationship.
       *
-      * @param toQuery       The query defining the set of possibly related rows.
+      * @param toQuery       The query defining the set of possibly related
+      *                      rows.
       * @param joinCondition The condition on which the entity query and the
       *                      toQuery are to be joined.
       *
@@ -267,9 +298,10 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toManyThrough[To <: Table[M], Through <: Table[_], M]
-    (toQuery: Query[(Through, To), _ <: (_, M), Seq], joinCondition: (T, (Through, To)) => Rep[Boolean])
-    : ToManyThrough[T, Through, To, E, I, M] =
+    protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
+        toQuery: Query[(Through, To), _ <: (_, M), Seq],
+        joinCondition: (T, (Through, To)) => Rep[Boolean]
+    ): ToManyThrough[T, Through, To, E, I, M] =
       new ToManyThrough[T, Through, To, E, I, M](query, toQuery, joinCondition)
 
     /** Creates a new indirect (with a join-table) 'to many' relationship.
@@ -285,11 +317,16 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toManyThrough[To <: Table[M], Through <: Table[_], M]
-    (joinCondition: (T, (Through, To)) => Rep[Boolean])
-    (implicit provider: IndirectToQueryProvider[To, Through, M])
-    : ToManyThrough[T, Through, To, E, I, M] =
-      new ToManyThrough[T, Through, To, E, I, M](query, provider.toQuery, joinCondition)
+    protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
+        joinCondition: (T, (Through, To)) => Rep[Boolean]
+    )(implicit
+        provider: IndirectToQueryProvider[To, Through, M]
+    ): ToManyThrough[T, Through, To, E, I, M] =
+      new ToManyThrough[T, Through, To, E, I, M](
+        query,
+        provider.toQuery,
+        joinCondition
+      )
 
     /** Creates a new indirect (with a join-table) 'to many' relationship.
       *
@@ -303,11 +340,16 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toManyThrough[To <: Table[M], Through <: Table[_], M]
-    (toQuery: Query[(Through, To), _ <: (_, M), Seq])
-    (implicit provider: IndirectJoinConditionProvider[T, Through, To])
-    : ToManyThrough[T, Through, To, E, I, M] =
-      new ToManyThrough[T, Through, To, E, I, M](query, toQuery, provider.joinCondition)
+    protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
+        toQuery: Query[(Through, To), _ <: (_, M), Seq]
+    )(implicit
+        provider: IndirectJoinConditionProvider[T, Through, To]
+    ): ToManyThrough[T, Through, To, E, I, M] =
+      new ToManyThrough[T, Through, To, E, I, M](
+        query,
+        toQuery,
+        provider.joinCondition
+      )
 
     /** Creates a new indirect (with a join-table) 'to many' relationship.
       *
@@ -319,10 +361,16 @@ trait EntityCompanionComponent {
       * @tparam Through The joining table's type.
       * @tparam M       The target table's element type.
       */
-    protected def toManyThrough[To <: Table[M], Through <: Table[_], M]
-    (implicit tqp: IndirectToQueryProvider[To, Through, M], jcp: IndirectJoinConditionProvider[T, Through, To])
-    : ToManyThrough[T, Through, To, E, I, M] =
-      new ToManyThrough[T, Through, To, E, I, M](query, tqp.toQuery, jcp.joinCondition)
+    protected def toManyThrough[To <: Table[M], Through <: Table[_], M](
+      implicit
+        tqp: IndirectToQueryProvider[To, Through, M],
+        jcp: IndirectJoinConditionProvider[T, Through, To]
+    ): ToManyThrough[T, Through, To, E, I, M] =
+      new ToManyThrough[T, Through, To, E, I, M](
+        query,
+        tqp.toQuery,
+        jcp.joinCondition
+      )
   }
 
   /** Provides a default target query for indirect relationships.
@@ -354,8 +402,17 @@ trait EntityCompanionComponent {
       * @tparam Through The join-table's type.
       * @tparam T       The target table's entity type.
       */
-    implicit def materialize[To <: Table[T], Through <: Table[_], T]: IndirectToQueryProvider[To, Through, T] =
-      macro IndirectToQueryProviderMaterializeImpl[To, Through, T, IndirectToQueryProvider[To, Through, T]]
+    implicit def materialize[
+        To <: Table[T],
+        Through <: Table[_],
+        T
+    ]: IndirectToQueryProvider[To, Through, T] =
+      macro IndirectToQueryProviderMaterializeImpl[
+        To,
+        Through,
+        T,
+        IndirectToQueryProvider[To, Through, T]
+      ]
   }
 
   /** Provides a default join condition for direct relationships.
@@ -385,8 +442,15 @@ trait EntityCompanionComponent {
       * @tparam From The owner table's type.
       * @tparam To   The target table's type.
       */
-    implicit def materialize[From <: Table[_], To <: Table[_]]: DirectJoinConditionProvider[From, To] =
-      macro DirectJoinConditionProviderMaterializeImpl[From, To, DirectJoinConditionProvider[From, To]]
+    implicit def materialize[
+        From <: Table[_],
+        To <: Table[_]
+    ]: DirectJoinConditionProvider[From, To] =
+      macro DirectJoinConditionProviderMaterializeImpl[
+        From,
+        To,
+        DirectJoinConditionProvider[From, To]
+      ]
   }
 
   /** Provides a default join condition for indirect relationships.
@@ -404,8 +468,11 @@ trait EntityCompanionComponent {
     "- The candidate foreign key is non-standard (does not point to the other tables id column).\n" +
     "To resolve this, either provide the joinCondition argument explicitly, " +
     "or make sure exactly 1 candidate foreign key is defined.")
-  trait IndirectJoinConditionProvider[From <: Table[_], Through <: Table[_], To <: Table[_]] {
-
+  trait IndirectJoinConditionProvider[
+      From <: Table[_],
+      Through <: Table[_],
+      To <: Table[_]
+  ] {
     /** The provided default join condition. */
     val joinCondition: (From, (Through, To)) => Rep[Boolean]
   }
@@ -418,18 +485,27 @@ trait EntityCompanionComponent {
       * @tparam Through The join-table's type.
       * @tparam To      The target table's type.
       */
-    implicit def materialize[From <: Table[_], Through <: Table[_], To <: Table[_]]
-    : IndirectJoinConditionProvider[From, Through, To] =
-      macro IndirectJoinConditionProviderMaterializeImpl[From, Through, To, IndirectJoinConditionProvider[From, Through, To]]
+    implicit def materialize[
+        From <: Table[_],
+        Through <: Table[_],
+        To <: Table[_]
+    ]: IndirectJoinConditionProvider[From, Through, To] =
+      macro IndirectJoinConditionProviderMaterializeImpl[
+        From,
+        Through,
+        To,
+        IndirectJoinConditionProvider[From, Through, To]
+      ]
   }
 }
 
 object IndirectToQueryProviderMaterializeImpl {
-  def apply[To <: AbstractTable[_] : c.WeakTypeTag,
-            Through <: AbstractTable[_] : c.WeakTypeTag,
-            T : c.WeakTypeTag,
-            Res : c.WeakTypeTag]
-  (c: Context): c.Expr[Res] = {
+  def apply[
+      To <: AbstractTable[_] : c.WeakTypeTag,
+      Through <: AbstractTable[_] : c.WeakTypeTag,
+      T : c.WeakTypeTag,
+      Res : c.WeakTypeTag
+  ](c: Context): c.Expr[Res] = {
     import c.universe._
 
     val throughTableType = c.weakTypeOf[Through]
@@ -446,8 +522,11 @@ object IndirectToQueryProviderMaterializeImpl {
 }
 
 object DirectJoinConditionProviderMaterializeImpl {
-  def apply[From <: AbstractTable[_] : c.WeakTypeTag, To <: AbstractTable[_] : c.WeakTypeTag, Res : c.WeakTypeTag]
-  (c: Context): c.Expr[Res] = {
+  def apply[
+      From <: AbstractTable[_] : c.WeakTypeTag,
+      To <: AbstractTable[_] : c.WeakTypeTag,
+      Res : c.WeakTypeTag
+  ](c: Context): c.Expr[Res] = {
     import c.universe._
 
     val fromTableType = c.weakTypeOf[From]
@@ -462,11 +541,12 @@ object DirectJoinConditionProviderMaterializeImpl {
 }
 
 object IndirectJoinConditionProviderMaterializeImpl {
-  def apply[From <: AbstractTable[_] : c.WeakTypeTag,
-            Through <: AbstractTable[_] : c.WeakTypeTag,
-            To <: AbstractTable[_] : c.WeakTypeTag,
-            Res : c.WeakTypeTag]
-  (c: Context): c.Expr[Res] = {
+  def apply[
+      From <: AbstractTable[_] : c.WeakTypeTag,
+      Through <: AbstractTable[_] : c.WeakTypeTag,
+      To <: AbstractTable[_] : c.WeakTypeTag,
+      Res : c.WeakTypeTag
+  ](c: Context): c.Expr[Res] = {
     import c.universe._
 
     val fromTableType = c.weakTypeOf[From]

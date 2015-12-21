@@ -24,7 +24,8 @@ trait EntityActionBuilderComponent {
     *
     * @tparam T The entity's table type.
     * @tparam E The entity's type.
-    * @tparam C The result container type (e.g. [[scala.Option]], [[scala.Seq]]).
+    * @tparam C The result container type (e.g. [[scala.Option]],
+    *           [[scala.Seq]]).
     */
   trait EntityActionBuilder[T <: EntityTable[E, _], E <: Entity[E, _], C[_]] {
 
@@ -47,17 +48,21 @@ trait EntityActionBuilderComponent {
   /** Used to build an action which will result in a collection of entities
     * onto which the included includables will be eager-loaded.
     */
-  class EntityCollectionActionBuilder[T <: EntityTable[E, _], E <: Entity[E, _]](
+  class EntityCollectionActionBuilder[
+      T <: EntityTable[E, _],
+      E <: Entity[E, _]
+  ](
       val query: Query[T, E, Seq],
-      val includes: List[Includable[T, E]] = List())
-    extends EntityActionBuilder[T, E, Seq]
-  {
+      val includes: List[Includable[T, E]] = List()
+  ) extends EntityActionBuilder[T, E, Seq] {
 
     /** Narrows the query to only those entities that satisfy the predicate.
       *
       * @see [[slick.lifted.Query.filter()]]
       */
-    def filter[C <: Rep[_] : CanBeQueryCondition](f: (T) => C): EntityCollectionActionBuilder[T, E] =
+    def filter[C <: Rep[_] : CanBeQueryCondition](
+        f: (T) => C
+    ): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query.filter(f), includes)
 
     /** Narrows the query to only those entities that do not satisfy the
@@ -65,7 +70,9 @@ trait EntityActionBuilderComponent {
       *
       * @see [[slick.lifted.Query.filterNot()]]
       */
-    def filterNot[C <: Rep[_] : CanBeQueryCondition](f: (T) => C): EntityCollectionActionBuilder[T, E] =
+    def filterNot[C <: Rep[_] : CanBeQueryCondition](
+        f: (T) => C
+    ): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query.filterNot(f), includes)
 
     /** Sort this query according to a function which extracts the ordering
@@ -73,7 +80,11 @@ trait EntityActionBuilderComponent {
       *
       * @see [[slick.lifted.Query.sortBy()]]
       */
-    def sortBy[C](f: (T) => C)(implicit arg0: (C) => Ordered): EntityCollectionActionBuilder[T, E] =
+    def sortBy[C](
+        f: (T) => C
+    )(implicit
+        arg0: (C) => Ordered
+    ): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query.sortBy(f), includes)
 
     /** Select the first `num` elements.
@@ -90,7 +101,9 @@ trait EntityActionBuilderComponent {
     def drop(num: Int): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query.drop(num), includes)
 
-    def include(include: Includable[T, E]*): EntityCollectionActionBuilder[T, E] =
+    def include(
+        include: Includable[T, E]*
+    ): EntityCollectionActionBuilder[T, E] =
       new EntityCollectionActionBuilder(query, includes ++ include)
   }
 
@@ -103,18 +116,24 @@ trait EntityActionBuilderComponent {
     *
     * @param builder The entity collection action builder from which to build
     *                the result action.
-    *
     * @tparam T The entity's table type.
     * @tparam E The entity's type.
     */
-  implicit class EntityCollectionResultInvoker[T <: EntityTable[E, _], E <: Entity[E, _]]
-  (builder: EntityCollectionActionBuilder[T, E]) {
+  implicit class EntityCollectionResultInvoker[
+      T <: EntityTable[E, _],
+      E <: Entity[E, _]
+  ](builder: EntityCollectionActionBuilder[T, E]) {
 
     /** Turns the entity collection action builder into an entity result action
       * onto which the included includables are eager-loaded.
       */
-    def result(implicit ec: ExecutionContext): DBIOAction[Seq[E], NoStream, Effect.Read] =
-      builder.includes.foldLeft(builder.query.result.map(_.toList))((a, i) => i.includeOn(a, builder.query))
+    def result(
+      implicit
+        ec: ExecutionContext
+    ): DBIOAction[Seq[E], NoStream, Effect.Read] =
+      builder.includes.foldLeft(builder.query.result.map(_.toList))((a, i) =>
+        i.includeOn(a, builder.query)
+      )
   }
 
   /** Used to build an action which will result in a single entity instance
@@ -122,17 +141,21 @@ trait EntityActionBuilderComponent {
     */
   class EntityInstanceActionBuilder[T <: EntityTable[E, _], E <: Entity[E, _]](
       val query: Query[T, E, Seq],
-      val includes: List[Includable[T, E]] = List())
-    extends EntityActionBuilder[T, E, Option]
-  {
+      val includes: List[Includable[T, E]] = List()
+  ) extends EntityActionBuilder[T, E, Option] {
     def include(include: Includable[T, E]*): EntityInstanceActionBuilder[T, E] =
       new EntityInstanceActionBuilder(query, includes ++ include)
 
     /** Turns the entity instance action builder into an entity result action
       * onto which the included includables are eager-loaded.
       */
-    def result(implicit ec: ExecutionContext): DBIOAction[Option[E], NoStream, Effect.Read] =
-      includes.foldLeft(query.result.headOption.map(x => x))((a, i) => i.includeOn(a, query))
+    def result(
+      implicit
+        ec: ExecutionContext
+    ): DBIOAction[Option[E], NoStream, Effect.Read] =
+      includes.foldLeft(query.result.headOption.map(x => x))((a, i) =>
+        i.includeOn(a, query)
+      )
   }
 }
 
@@ -150,11 +173,15 @@ trait EntityActionBuilderConversionsComponent {
 
   import driver.api._
 
-  implicit def queryToCollectionBuilder[T <: EntityTable[E, _], E <: Entity[E, _]]
-  (query: Query[T, E, Seq]): EntityCollectionActionBuilder[T, E] =
+  implicit def queryToCollectionBuilder[
+      T <: EntityTable[E, _],
+      E <: Entity[E, _]
+  ](query: Query[T, E, Seq]): EntityCollectionActionBuilder[T, E] =
     new EntityCollectionActionBuilder[T, E](query)
 
-  implicit def actionBuilderToQuery[T <: EntityTable[E, _], E <: Entity[E, _], C[_]]
-  (actionBuilder: EntityActionBuilder[T, E, C]): Query[T, E, Seq] =
+  implicit def actionBuilderToQuery[
+      T <: EntityTable[E, _],
+      E <: Entity[E, _], C[_]
+  ](actionBuilder: EntityActionBuilder[T, E, C]): Query[T, E, Seq] =
     actionBuilder.query
 }

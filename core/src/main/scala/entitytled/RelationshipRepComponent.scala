@@ -11,8 +11,8 @@ import scala.language.implicitConversions
 /** Component grouping declarations regarding relationship value representations
   * for relationship target values belonging to specific entity instances.
   *
-  * Needs to be mixed in along with a [[DriverComponent]], an [[EntityComponent]]
-  * and a [[RelationshipComponent]].
+  * Needs to be mixed in along with a [[DriverComponent]], an
+  * [[EntityComponent]] and a [[RelationshipComponent]].
   */
 trait RelationshipRepComponent {
   self: DriverComponent with EntityComponent with RelationshipComponent =>
@@ -49,7 +49,10 @@ trait RelationshipRepComponent {
       * in a database I/O action for fetched values (without executing an
       * additional value).
       */
-    def valueAction(implicit ec: ExecutionContext): DBIOAction[C[T], NoStream, Effect.Read]
+    def valueAction(
+      implicit
+        ec: ExecutionContext
+    ): DBIOAction[C[T], NoStream, Effect.Read]
 
     /** Treats this represented value as unfetched.
       *
@@ -73,7 +76,9 @@ trait RelationshipRepComponent {
     
     val isFetched: Boolean = true
 
-    def valueAction(implicit ec: ExecutionContext): DBIOAction[C[T], NoStream, Effect.Read] =
+    def valueAction(
+      implicit ec: ExecutionContext
+    ): DBIOAction[C[T], NoStream, Effect.Read] =
       DBIO.successful(value)
   }
 
@@ -92,7 +97,8 @@ trait RelationshipRepComponent {
   /** Represents the value of a 'to one' relationship for a specific owner
     * instance.
     */
-  sealed trait One[E <: Entity[E, I], I, T] extends RelationshipRep[E, I, T, Option]
+  sealed trait One[E <: Entity[E, I], I, T]
+    extends RelationshipRep[E, I, T, Option]
 
   /** Represents a fetched value of a 'to one' relationship for a specific owner
     * instance.
@@ -100,9 +106,9 @@ trait RelationshipRepComponent {
   case class OneFetched[E <: Entity[E, I], I, T](
       relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option],
       value: Option[T] = None,
-      ownerId: Option[I] = None)
-    extends One[E, I, T] with Fetched[T, Option]
-  {
+      ownerId: Option[I] = None
+  ) extends One[E, I, T] with Fetched[T, Option] {
+
     def asUnfetched: OneUnfetched[E, I, T] =
       OneUnfetched(relationship, ownerId)
   }
@@ -112,10 +118,13 @@ trait RelationshipRepComponent {
     */
   case class OneUnfetched[E <: Entity[E, I], I, T](
       relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option],
-      ownerId: Option[I])
-    extends One[E, I, T] with Unfetched[T, Option]
-  {
-    def valueAction(implicit ec: ExecutionContext): DBIOAction[Option[T], NoStream, Effect.Read] =
+      ownerId: Option[I]
+  ) extends One[E, I, T] with Unfetched[T, Option] {
+
+    def valueAction(
+      implicit
+        ec: ExecutionContext
+    ): DBIOAction[Option[T], NoStream, Effect.Read] =
       ownerId match {
         case Some(id) =>
           relationship.actionFor(id)
@@ -129,7 +138,8 @@ trait RelationshipRepComponent {
   /** Represents the value of a 'to many' relationship for a specific owner
     * instance.
     */
-  sealed trait Many[E <: Entity[E, I], I, T] extends RelationshipRep[E, I, T, Seq]
+  sealed trait Many[E <: Entity[E, I], I, T]
+    extends RelationshipRep[E, I, T, Seq]
 
   /** Represents a fetched (in memory) value of a 'to many' relationship for a
     * specific owner instance.
@@ -137,9 +147,9 @@ trait RelationshipRepComponent {
   case class ManyFetched[E <: Entity[E, I], I, T](
       relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq],
       value: Seq[T] = Seq(),
-      ownerId: Option[I] = None)
-    extends Many[E, I, T] with Fetched[T, Seq]
-  {
+      ownerId: Option[I] = None
+  ) extends Many[E, I, T] with Fetched[T, Seq] {
+
     def asUnfetched: ManyUnfetched[E, I, T] =
       ManyUnfetched(relationship, ownerId)
   }
@@ -149,10 +159,13 @@ trait RelationshipRepComponent {
     */
   case class ManyUnfetched[E <: Entity[E, I], I, T](
       relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq],
-      ownerId: Option[I])
-    extends Many[E, I, T] with Unfetched[T, Seq]
-  {
-    def valueAction(implicit ec: ExecutionContext): DBIOAction[Seq[T], NoStream, Effect.Read] =
+      ownerId: Option[I]
+  ) extends Many[E, I, T] with Unfetched[T, Seq] {
+
+    def valueAction(
+      implicit
+        ec: ExecutionContext
+    ): DBIOAction[Seq[T], NoStream, Effect.Read] =
       ownerId match {
         case Some(id) =>
           relationship.actionFor(id)
@@ -191,9 +204,11 @@ trait RelationshipRepConversionsComponent {
     *
     * @return The value represented by the relationship value representation.
     */
-  implicit def relationshipRepToValue[E <: Entity[E, I], I, T, C[_]]
-  (rep: RelationshipRep[E, I, T, C])
-  (implicit db: Database, ec: ExecutionContext)
-  : C[T] =
+  implicit def relationshipRepToValue[E <: Entity[E, I], I, T, C[_]](
+      rep: RelationshipRep[E, I, T, C]
+  )(implicit
+      db: Database,
+      ec: ExecutionContext
+  ): C[T] =
     Await.result(db.run(rep.valueAction), 5 seconds)
 }

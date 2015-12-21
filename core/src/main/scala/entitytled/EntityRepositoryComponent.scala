@@ -11,25 +11,29 @@ import entitytled.exception.MissingIDException
 
 /** Component grouping some declarations regarding entity repositories.
   *
-  * Needs to be mixed in along with a [[DriverComponent]], an [[EntityComponent]]
-  * and a [[EntityActionBuilderComponent]].
+  * Needs to be mixed in along with a [[DriverComponent]], an
+  * [[EntityComponent]] and a [[EntityActionBuilderComponent]].
   */
 trait EntityRepositoryComponent {
-  self: DriverComponent with EntityComponent with EntityActionBuilderComponent =>
+  self: DriverComponent
+    with EntityComponent
+    with EntityActionBuilderComponent
+  =>
 
   import driver.api._
 
   /** Repository class for managing the retrieval and persistence of entities.
     *
     * @constructor Creates a new entity repository.
-    *
     * @tparam T The entity's table type.
     * @tparam E The entity type.
     * @tparam I The entity's ID type.
     */
-  class EntityRepository[T <: EntityTable[E, I], E <: Entity[E, I], I]
-  (implicit ev: BaseColumnType[I], tqp: TableQueryProvider[T, E])
-  {
+  class EntityRepository[T <: EntityTable[E, I], E <: Entity[E, I], I](
+    implicit
+      ev: BaseColumnType[I],
+      tqp: TableQueryProvider[T, E]
+  ) {
     val query: Query[T, E, Seq] = tqp.tableQuery
 
     val all: Query[T, E, Seq] = query
@@ -52,7 +56,9 @@ trait EntityRepositoryComponent {
             (query += i).map(x => id)
           case _ =>
             query returning query.map(_.id) += i
-        }).flatMap(id => afterSave(id, i) >> afterInsert(id, i) >> DBIO.successful(id))
+        }).flatMap { id =>
+          afterSave(id, i) >> afterInsert(id, i) >> DBIO.successful(id)
+        }
       }
 
     /** Returns a database action for updating the database record for the given
@@ -66,7 +72,8 @@ trait EntityRepositoryComponent {
       instance.id match {
         case Some(id) =>
           beforeSave(instance).flatMap(beforeUpdate).flatMap { i =>
-            query.filter(_.id === id).update(i) >> afterSave(id, i) >> afterUpdate(id, i)
+            query.filter(_.id === id).update(i) >> afterSave(id, i) >>
+              afterUpdate(id, i)
           }
         case _ => DBIO.failed(new MissingIDException)
       }
@@ -85,7 +92,11 @@ trait EntityRepositoryComponent {
       *
       * @param instance The entity instance that is to be insterted.
       */
-    protected def beforeInsert(instance: E)(implicit ec: ExecutionContext): DBIO[E] =
+    protected def beforeInsert(
+        instance: E
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[E] =
       DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken before
@@ -93,7 +104,11 @@ trait EntityRepositoryComponent {
       *
       * @param instance The entity instance that is to be updated.
       */
-    protected def beforeUpdate(instance: E)(implicit ec: ExecutionContext): DBIO[E] =
+    protected def beforeUpdate(
+        instance: E
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[E] =
       DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken either before
@@ -101,7 +116,11 @@ trait EntityRepositoryComponent {
       *
       * @param instance The entity instance that is to be saved.
       */
-    protected def beforeSave(instance: E)(implicit ec: ExecutionContext): DBIO[E] =
+    protected def beforeSave(
+        instance: E
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[E] =
       DBIO.successful(instance)
 
     /** May be overriden to specify actions that should be taken before
@@ -109,7 +128,11 @@ trait EntityRepositoryComponent {
       *
       * @param id The ID of entity instance that is to be deleted.
       */
-    protected def beforeDelete(id: I)(implicit ec: ExecutionContext): DBIO[Unit] =
+    protected def beforeDelete(
+        id: I
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[Unit] =
       DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
@@ -118,7 +141,12 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was inserted.
       * @param instance The entity instance that was inserted.
       */
-    protected def afterInsert(id: I, instance: E)(implicit ec: ExecutionContext): DBIO[Unit] =
+    protected def afterInsert(
+        id: I,
+        instance: E
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[Unit] =
       DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
@@ -127,7 +155,12 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was updated.
       * @param instance The entity instance that was updated.
       */
-    protected def afterUpdate(id: I, instance: E)(implicit ec: ExecutionContext): DBIO[Unit] =
+    protected def afterUpdate(
+        id: I,
+        instance: E
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[Unit] =
       DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken either after
@@ -136,7 +169,12 @@ trait EntityRepositoryComponent {
       * @param id       The ID of entity instance that was saved.
       * @param instance The entity instance that was saved.
       */
-    protected def afterSave(id: I, instance: E)(implicit ec: ExecutionContext): DBIO[Unit] =
+    protected def afterSave(
+        id: I,
+        instance: E
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[Unit] =
       DBIO.successful(())
 
     /** May be overriden to specify actions that should be taken after
@@ -144,7 +182,11 @@ trait EntityRepositoryComponent {
       *
       * @param id The ID of entity instance that was deleted.
       */
-    protected def afterDelete(id: I)(implicit ec: ExecutionContext): DBIO[Unit] =
+    protected def afterDelete(
+        id: I
+    )(implicit
+        ec: ExecutionContext
+    ): DBIO[Unit] =
       DBIO.successful(())
   }
 
@@ -171,13 +213,16 @@ trait EntityRepositoryComponent {
       *           provided.
       */
     implicit def materialize[T <: Table[M], M]: TableQueryProvider[T, M] =
-      macro MaterializeTableQueryProviderImpl.apply[T, M, TableQueryProvider[T, M]]
+      macro MaterializeTableQueryProviderImpl[T, M, TableQueryProvider[T, M]]
   }
 }
 
 object MaterializeTableQueryProviderImpl {
-  def apply[T : c.WeakTypeTag, M : c.WeakTypeTag, Res : c.WeakTypeTag]
-  (c: Context): c.Expr[Res] = {
+  def apply[
+      T : c.WeakTypeTag,
+      M : c.WeakTypeTag,
+      Res : c.WeakTypeTag
+  ](c: Context): c.Expr[Res] = {
     import c.universe._
 
     val tableType = c.weakTypeOf[T]

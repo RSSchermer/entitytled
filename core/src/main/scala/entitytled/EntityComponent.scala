@@ -10,11 +10,14 @@ import scala.reflect.macros._
 
 /** Component grouping together some entity relation declarations.
   *
-  * Needs to be mixed in along with a [[DriverComponent]], [[RelationshipComponent]],
-  * and a [[RelationshipRepComponent]].
+  * Needs to be mixed in along with a [[DriverComponent]],
+  * [[RelationshipComponent]], and a [[RelationshipRepComponent]].
   */
 trait EntityComponent {
-  self: DriverComponent with RelationshipComponent with RelationshipRepComponent =>
+  self: DriverComponent
+    with RelationshipComponent
+    with RelationshipRepComponent
+  =>
   
   import driver.api._
 
@@ -27,14 +30,14 @@ trait EntityComponent {
     * @param includes       The included (eager-loaded) relationships.
     * @param includesSetter Helper needed for updating the included
     *                       relationship values.
-    *
     * @tparam E The extending entity type itself (a self bound).
     * @tparam I The ID type.
     */
-  abstract class Entity[E <: Entity[E, I], I]
-  (implicit includes: Includes[E] = Includes(), includesSetter: IncludesSetter[E])
-  {
-    // TODO: explore statically typed includes with KList and singleton types
+  abstract class Entity[E <: Entity[E, I], I](
+    implicit
+      includes: Includes[E] = Includes(),
+      includesSetter: IncludesSetter[E]
+  ) {
 
     /** The entity's unique ID.
       *
@@ -57,13 +60,12 @@ trait EntityComponent {
       * @param relationship The relationship the value is associated with.
       * @param value        The value to include (eager-load) on the new
       *                     instance.
-      *
       * @tparam T The relationships target type.
       * @tparam C Value container type ([[scala.Option]], [[scala.Seq]], ...)
       */
     def setInclude[T, C[_]](
-      relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, C],
-      value: C[T]
+        relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, C],
+        value: C[T]
     ): E =
       withIncludes(includes.updated(relationship, value))
 
@@ -72,11 +74,12 @@ trait EntityComponent {
       *
       * @param relationshipRep The relationship value representation to be
       *                        included (eager-loaded) onto the new instance.
-      *
       * @tparam T The relationships target type.
       * @tparam C Value container type ([[scala.Option]], [[scala.Seq]], ...)
       */
-    def setInclude[T, C[_]](relationshipRep: RelationshipRep[E, I, T, C] with Fetched[T, C]): E =
+    def setInclude[T, C[_]](
+        relationshipRep: RelationshipRep[E, I, T, C] with Fetched[T, C]
+    ): E =
       setInclude(relationshipRep.relationship, relationshipRep.value)
 
     /** Returns a relationship value representation for the given 'to one'
@@ -84,10 +87,11 @@ trait EntityComponent {
       *
       * @param relationship The 'to one' relationship the represented value
       *                     belongs to.
-      *
       * @tparam T The relationship target's type.
       */
-    def one[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option]): One[E, I, T] =
+    def one[T](
+        relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Option]
+    ): One[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
           OneFetched[E, I, T](relationship, value, id)
@@ -100,10 +104,11 @@ trait EntityComponent {
       *
       * @param relationship The 'to many' relationship the represented value
       *                     belongs to.
-      *
       * @tparam T The relationship target's type.
       */
-    def many[T](relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq]): Many[E, I, T] =
+    def many[T](
+        relationship: Relationship[_ <: EntityTable[E, I], _ <: Table[T], E, I, T, Seq]
+    ): Many[E, I, T] =
       includes.get(relationship) match {
         case Some(value) =>
           ManyFetched[E, I, T](relationship, value, id)
@@ -114,8 +119,8 @@ trait EntityComponent {
 
   /** Base class for entity tables.
     *
-    * Extend this class to define a table for an entity type. Entity tables
-    * must define an ID column. Clients need to implement the `id` member.
+    * Extend this class to define a table for an entity type. Entity tables must
+    * define an ID column. Clients need to implement the `id` member.
     *
     * @tparam E The entity type this table represents.
     * @tparam I The entity's ID type.
@@ -146,7 +151,6 @@ trait EntityComponent {
     * Should be instantiated through its companion object.
     *
     * @param values The relationship-value pairs.
-    *
     * @tparam E The ower entity's type.
     */
   class Includes[E <: Entity[E, _]](values: Seq[Include[E]]) {
@@ -159,11 +163,12 @@ trait EntityComponent {
       * None otherwise.
       *
       * @param relationship The relationship to look up.
-      *
       * @tparam T The relationships target type.
       * @tparam C Value container type ([[scala.Option]], [[scala.Seq]], ...)
       */
-    def get[T, C[_]](relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C]): Option[C[T]] =
+    def get[T, C[_]](
+        relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C]
+    ): Option[C[T]] =
       relationshipMap.get(relationship).asInstanceOf[Option[C[T]]]
 
     /** Returns a new set of includes, in which the given relationship's
@@ -176,15 +181,17 @@ trait EntityComponent {
       * @param relationship The relationship of which the value is to be
       *                     updated.
       * @param value        The updated relationship value.
-      *
       * @tparam T The relationships target type.
       * @tparam C Value container type ([[scala.Option]], [[scala.Seq]], ...)
       */
     def updated[T, C[_]](
-      relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C],
-      value: C[T]
-    ): Includes[E] =
-      new Includes(relationshipMap.updated(relationship, value).toSeq.asInstanceOf[Seq[Include[E]]])
+        relationship: Relationship[_ <: EntityTable[E, _], _ <: Table[_], E, _, T, C],
+        value: C[T]
+    ): Includes[E] = {
+      val map = relationshipMap.updated(relationship, value)
+
+      new Includes(map.toSeq.asInstanceOf[Seq[Include[E]]])
+    }
   }
 
   object Includes {
@@ -192,7 +199,6 @@ trait EntityComponent {
     /** Creates a new includes set holding the given relationship-value pairs.
       *
       * @param values The relationship-value pairs.
-      *
       * @tparam E The owner entity's type.
       */
     def apply[E <: Entity[E, _]](values: Include[E]*): Includes[E] =
@@ -206,8 +212,8 @@ trait EntityComponent {
     *
     * @tparam E The type of the entity that owns the includes.
     */
-  @implicitNotFound("Could not create an includes setter for entity type {E}. " +
-    "Did you make sure {E} is a case class?")
+  @implicitNotFound("Could not create an includes setter for entity type " +
+    "{E}. Did you make sure {E} is a case class?")
   trait IncludesSetter[E <: Entity[E, _]] {
     def withIncludes(instance: E, includes: Includes[E]): E
   }
@@ -218,7 +224,9 @@ trait EntityComponent {
       *
       * @tparam E The type of the entity that owns the includes.
       */
-    implicit def materializeIncludesSetter[E <: Entity[E, _]]: IncludesSetter[E] =
+    implicit def materializeIncludesSetter[
+        E <: Entity[E, _]
+    ]: IncludesSetter[E] =
       macro MaterializeIncludesSetterImpl.apply[E]
   }
 }
