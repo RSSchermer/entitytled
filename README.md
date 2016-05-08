@@ -30,7 +30,6 @@ The rest of this readme is a usage guide.
 - [Navigating relationship values](#navigating-relationship-values)
 - [Play Framework](#play-framework)
   - [Activator Template](#activator-template)
-  - [Real world example](#real-world-example)
 
 ## Artifact installation
 
