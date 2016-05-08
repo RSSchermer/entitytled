@@ -964,11 +964,3 @@ Play config file.
 
 The [simple activator sample](https://typesafe.com/activator/template/play-entitytled-simple) 
 gives an example of using Entitytled with Play Framework.
-
-### Real world example
-
-I was fortunately allowed the open-source my [master thesis research project](https://github.com/RSSchermer/pim-aid) 
-(the project for which Entitytled was originally created). I doubt it's a 
-particularly good example of a Play application (feedback always welcome, please 
-open issues!), but it does provides a more real world example of using 
-Entitytled and covers many of the things discussed in this guide.
