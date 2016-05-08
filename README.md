@@ -725,9 +725,9 @@ db.run(Movie.all.result).onSuccess { _.foreach { m =>
 ```
 
 This snippet runs a database I/O action which will produce a future holding all
-movies. If this future runs successfully, it will print out the movie's name
+movies. If this future runs successfully, it will print out each movie's name
 and the name of the director who directed it. If there are 1000 movies, this 
-will execute 1001 queries: 1 to retrieve all the movies and then one for each 
+will execute 1001 queries: 1 to retrieve all movies and then one for each 
 movie to retrieve its director. This is obviously not desirable. 
 
 The solution to this problem is to eager-load the directors with `include`:
@@ -774,8 +774,8 @@ val oldestTenMaleDirectorsWithMovies =
 ```
 
 `include` cannot be chained onto queries that don't produce an entity result
-(e.g. `Director.filter(_.age >== 65).size`, which will produce an integer 
-result, not an entity result). 
+(e.g. `Director.all.size`, which will produce an integer result, not an entity 
+result). 
 
 Actions that do eager-loading cannot be streamed.
 
@@ -902,7 +902,7 @@ someMovie.director match {
   case OneFetched(relationship, value, ownerID) =>
     println(s"The director was eager-loaded: ${value.name}!")
   case _ =>
-    println("The director was not loaded yet...")
+    println("The director hasn't been loaded yet...")
 }
 ```
 
@@ -912,7 +912,7 @@ regardless of whether it was already prefetched or not, first call
 
 ```scala
 // Will run a new database query, regardless of whether the director value was 
-// prefetched
+// already prefetched
 val movieDirector: Option[Director] = someMovie.director.asUnfetched
 ```
 
