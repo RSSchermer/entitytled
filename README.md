@@ -1,13 +1,11 @@
 # Entitytled
 
 Entitytled is an ORM-like data access and persistence library build on top of 
-the amazing [Scala Slick](http://slick.typesafe.com/) library. Entitytled adds 
-the "entity" and "relationship" concepts, with the aims of improving structure 
-and consistency, and eliminating boilerplate.
+[Scala Slick](http://slick.typesafe.com/). Entitytled adds "entity" and 
+"relationship" concepts, with the aims of improving structure and consistency, 
+and eliminating boilerplate.
 
 [![Build Status](https://travis-ci.org/RSSchermer/entitytled.svg?branch=master)](https://travis-ci.org/RSSchermer/entitytled)
-
-The rest of this readme is a usage guide.
 
 ## Table of contents
 
