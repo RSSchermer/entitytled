@@ -19,27 +19,27 @@ class PersonHooksSpec extends FunSpec with HooksSpec with Matchers {
     } yield {
       describe("persistence hook counter") {
         it("should have executed the after insert hook once") {
-          counter.get.afterInsertCount should be(1)
+          counter.map(_.afterInsertCount) should be(Some(1))
         }
 
         it("should have executed the before update hook once") {
-          counter.get.beforeUpdateCount should be(1)
+          counter.map(_.beforeUpdateCount) should be(Some(1))
         }
 
         it("should have executed the after update hook once") {
-          counter.get.afterUpdateCount should be(1)
+          counter.map(_.afterUpdateCount) should be(Some(1))
         }
 
         it("should have executed the after save hook twice") {
-          counter.get.afterSaveCount should be(2)
+          counter.map(_.afterSaveCount) should be(Some(2))
         }
 
         it("should have executed the before delete hook once") {
-          counter.get.beforeDeleteCount should be(1)
+          counter.map(_.beforeDeleteCount) should be(Some(1))
         }
 
         it("should have executed the after delete hook once") {
-          counter.get.afterDeleteCount should be(1)
+          counter.map(_.afterDeleteCount) should be(Some(1))
         }
       }
     }

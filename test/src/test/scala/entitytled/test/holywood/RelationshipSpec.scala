@@ -42,7 +42,7 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
         describe("'to one' relationships") {
           describe("director for The Usual Suspects") {
             it("should return Bryan Singer") {
-              usualSuspectsDirector.get.name should be("Bryan Singer")
+              usualSuspectsDirector.map(_.name) should be(Some("Bryan Singer"))
             }
           }
         }
@@ -70,15 +70,21 @@ class RelationshipSpec extends FunSpec with HolywoodSpec with Matchers {
             }
 
             it("should have fetched Bryan Singer for The Usual Suspects") {
-              val usualSuspects = kevinSpaceyMoviesWithDirector.find(_.title == "The Usual Suspects").get
+              val directorName = for {
+                usualSuspects <- kevinSpaceyMoviesWithDirector.find(_.title == "The Usual Suspects")
+                director <- usualSuspects.director
+              } yield director.name
 
-              usualSuspects.director.get.name should be("Bryan Singer")
+              directorName should be(Some("Bryan Singer"))
             }
 
             it("should have fetched Sam Mendes for American Beauty") {
-              val usualSuspects = kevinSpaceyMoviesWithDirector.find(_.title == "American Beauty").get
+              val directorName = for {
+                usualSuspects <- kevinSpaceyMoviesWithDirector.find(_.title == "American Beauty")
+                director <- usualSuspects.director
+              } yield director.name
 
-              usualSuspects.director.get.name should be("Sam Mendes")
+              directorName should be(Some("Sam Mendes"))
             }
           }
         }

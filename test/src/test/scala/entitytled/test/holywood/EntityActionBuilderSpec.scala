@@ -60,13 +60,13 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
         }
 
         it("should have fetched The Usual Suspects for Kevin Spacey") {
-          val spaceyMovies = starsWithMovies.find(_.name == "Kevin Spacey").get.movies.map(_.title)
+          val spaceyMovies = starsWithMovies.find(_.name == "Kevin Spacey").map(_.movies).toList.flatten.map(_.title)
 
           spaceyMovies should contain("The Usual Suspects")
         }
 
         it("should not have fetched The Usual Suspects for Robert De Niro") {
-          val deNiroMovies = starsWithMovies.find(_.name == "Robert De Niro").get.movies.map(_.title)
+          val deNiroMovies = starsWithMovies.find(_.name == "Robert De Niro").map(_.movies).toList.flatten.map(_.title)
 
           deNiroMovies should not contain "The Usual Suspects"
         }
@@ -84,10 +84,13 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
         }
 
         it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
-          val spacey = starsWithMoviesWithDirectors.find(_.name == "Kevin Spacey").get
-          val usualSuspects = spacey.movies.find(_.title == "The Usual Suspects").get
+          val directorName = for {
+            spacey <- starsWithMoviesWithDirectors.find(_.name == "Kevin Spacey")
+            usualSuspects <- spacey.movies.find(_.title == "The Usual Suspects")
+            director <- usualSuspects.director
+          } yield director.name
 
-          usualSuspects.director.get.name should be("Bryan Singer")
+          directorName should be(Some("Bryan Singer"))
         }
       }
 
@@ -100,14 +103,14 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
           forAll(moviesWithDirectorAndStars) { movie => movie.director shouldBe a[OneFetched[_, _, _]] }
         }
 
-        val usualSuspects = moviesWithDirectorAndStars.find(_.title == "The Usual Suspects").get
+        val usualSuspects = moviesWithDirectorAndStars.find(_.title == "The Usual Suspects")
 
         it("should have fetched Kevin Spacey for The Usual Suspects") {
-          usualSuspects.stars.map(_.name) should contain("Kevin Spacey")
+          usualSuspects.map(_.stars).toList.flatten.map(_.name) should contain("Kevin Spacey")
         }
 
         it("should have fetched Brian Singer for The Usual Suspects") {
-          usualSuspects.director.get.name should be("Bryan Singer")
+          usualSuspects.flatMap(_.director).map(_.name) should be(Some("Bryan Singer"))
         }
       }
 
@@ -133,11 +136,11 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
 
       describe("stars sorted by ascending age") {
         it("should have retrieved Kevin Spacey as the first entry") {
-          starsByAgeAsc.headOption.get.name should be("Kevin Spacey")
+          starsByAgeAsc.headOption.map(_.name) should be(Some("Kevin Spacey"))
         }
 
         it("should have retrieved Robert De Niro as the last entry") {
-          starsByAgeAsc.lastOption.get.name should be("Robert De Niro")
+          starsByAgeAsc.lastOption.map(_.name) should be(Some("Robert De Niro"))
         }
       }
 
@@ -153,89 +156,93 @@ class EntityActionBuilderSpec extends FunSpec with HolywoodSpec with Matchers {
         }
 
         it("should return Meryl Streep") {
-          starsByAgeAscTake2Drop1.headOption.get.name should be("Meryl Streep")
+          starsByAgeAscTake2Drop1.headOption.map(_.name) should be(Some("Meryl Streep"))
         }
       }
 
       describe("stars sorted in descending age") {
         it("should have retrieved Robert De Niro as the first entry") {
-          starsByAgeDesc.headOption.get.name should be("Robert De Niro")
+          starsByAgeDesc.headOption.map(_.name) should be(Some("Robert De Niro"))
         }
 
         it("should have retrieved Kevin Spacey as the last entry") {
-          starsByAgeDesc.lastOption.get.name should be("Kevin Spacey")
+          starsByAgeDesc.lastOption.map(_.name) should be(Some("Kevin Spacey"))
         }
       }
 
       describe("query for Kevin Spacey by ID") {
         it("should have returned Kevin Spacey") {
-          spacey.get.name should be("Kevin Spacey")
+          spacey.map(_.name) should be(Some("Kevin Spacey"))
         }
       }
 
       describe("query for Kevin Spacey with movie eager-loading") {
         it("should have fetched the movies for Kevin Spacey") {
-          spaceyWithMovies.get.movies shouldBe a[ManyFetched[_, _, _]]
+          spaceyWithMovies.map(_.movies).get shouldBe a[ManyFetched[_, _, _]]
         }
 
         it("should have fetched The Usual Suspects") {
-          spaceyWithMovies.get.movies.map(_.title) should contain("The Usual Suspects")
+          spaceyWithMovies.map(_.movies).toList.flatten.map(_.title) should contain("The Usual Suspects")
         }
       }
 
       describe("query for Kevin Spacey with movie eager-loading with nested director eager-loading") {
         it("should have fetched the movies for Kevin Spacey") {
-          spaceyWithMoviesWithDirector.get.movies shouldBe a[ManyFetched[_, _, _]]
+          spaceyWithMoviesWithDirector.map(_.movies).get shouldBe a[ManyFetched[_, _, _]]
         }
 
         it("should have fetched the directors for each movie") {
-          forAll(spaceyWithMoviesWithDirector.get.movies.map(_.director)) { director =>
+          forAll(spaceyWithMoviesWithDirector.map(_.movies).toList.flatten.map(_.director)) { director =>
             director shouldBe a[OneFetched[_, _, _]]
           }
         }
 
         it("should have fetched Bryan Singer for Kevin Spacey's The Usual Suspects") {
-          val suspects = spaceyWithMoviesWithDirector.get.movies.find(_.title == "The Usual Suspects").get
+          val directorName = for {
+            spacey <- spaceyWithMoviesWithDirector
+            suspects <- spacey.movies.find(_.title == "The Usual Suspects")
+            director <- suspects.director
+          } yield director.name
 
-          suspects.director.get.name should be("Bryan Singer")
+          directorName should be(Some("Bryan Singer"))
         }
       }
 
       describe("Kevin Spacey with director (composed relationship) eager-loading") {
         it("should have fetched the directors for Kevin Spacey") {
-          spaceyWithDirectors.get.directors shouldBe a[ManyFetched[_, _, _]]
+          spaceyWithDirectors.map(_.directors).get shouldBe a[ManyFetched[_, _, _]]
         }
 
         it("should have fetched 1 director") {
-          spaceyWithDirectors.get.directors.length should be(1)
+          spaceyWithDirectors.map(_.directors.length) should be(Some(1))
         }
 
         it("should have fetched Bryan Singer") {
-          spaceyWithDirectors.get.directors.map(_.name) should contain("Bryan Singer")
+          spaceyWithDirectors.map(_.directors).toList.flatten.map(_.name) should contain("Bryan Singer")
         }
       }
 
       describe("query for The Usual Suspects by ID") {
         it("should have returned The Usual suspects") {
-          suspects.get.title should be("The Usual Suspects")
+          suspects.map(_.title) should be(Some("The Usual Suspects"))
         }
       }
 
       describe("The Usual Suspects with director and star eager-loading") {
         it("should have fetched the stars for each movie listed") {
-          suspectsWithDirectorAndStars.get.stars shouldBe a[ManyFetched[_, _, _]]
+          suspectsWithDirectorAndStars.map(_.stars).get shouldBe a[ManyFetched[_, _, _]]
         }
 
         it("should have fetched the director for each movie listed") {
-          suspectsWithDirectorAndStars.get.director shouldBe a[OneFetched[_, _, _]]
+          suspectsWithDirectorAndStars.map(_.director).get shouldBe a[OneFetched[_, _, _]]
         }
 
         it("should have fetched Kevin Spacey for The Usual Suspects") {
-          suspectsWithDirectorAndStars.get.stars.map(_.name) should contain("Kevin Spacey")
+          suspectsWithDirectorAndStars.map(_.stars).toList.flatten.map(_.name) should contain("Kevin Spacey")
         }
 
         it("should have fetched Brian Singer for The Usual Suspects") {
-          suspectsWithDirectorAndStars.get.director.get.name should be("Bryan Singer")
+          suspectsWithDirectorAndStars.flatMap(_.director).map(_.name) should be(Some("Bryan Singer"))
         }
       }
     }

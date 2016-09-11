@@ -37,7 +37,7 @@ class EntityRepositorySpec extends FunSpec with HolywoodSpec with Matchers {
         age <- Star.all.filter(_.id === id).map(_.age).result.headOption
       } yield {
         it("should have updated the age to 74") {
-          age.get should be(74)
+          age should be(Some(74))
         }
       }
     }
@@ -53,7 +53,7 @@ class EntityRepositorySpec extends FunSpec with HolywoodSpec with Matchers {
         )
 
         kevinSpacey <- Star.all.filter(_.name === "Kevin Spacey").result.headOption
-        _ <- Star.delete(kevinSpacey.get.id.get)
+        _ <- Star.delete(kevinSpacey.flatMap(_.id).get)
         stars <- Star.all.result
       } yield {
         it("should have reduced to number of stars to 2") {
